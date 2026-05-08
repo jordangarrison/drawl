@@ -80,46 +80,48 @@ Public API in =drawl.compiler=: =parse=, =emit=, =compile=, =validate=, plus =dr
 
 Define shorthands at the top of any source. Plain symbol substitution, no =eval=, no quoting gymnastics:
 
-#+begin_src lisp
+#+begin_src clojure
 (defmacro service [id label tech]
   (container id label :tech tech))
 
-(diagram "Trading Platform"
-  (service api    "API"     "Phoenix")
-  (service quotes "Quotes"  "Elixir + GenServer")
-  (service ledger "Ledger"  "PostgreSQL"))
+(diagram "REPL-driven shop"
+  (service api     "Shop API"     "Pedestal + Reitit")
+  (service workers "Job runners"  "Component + core.async")
+  (service ingest  "Event ingest" "Kafka + transit-clj"))
 #+end_src
 
 User macros override built-ins of the same name (with a warning) — last-write-wins, the way Lisp expects.
 
 ** Built-in shorthand for the boring 80%
 
-#+begin_src lisp
-(diagram "Banking"
-  (webapp       web   "Customer Web")        ; → :tech "Web"
-  (rest-api     api   "Banking API")         ; → :tech "REST API"
-  (postgres-db  db    "Customer DB")         ; → :role :database, :tech "PostgreSQL"
-  (redis-cache  cache "Session cache"))      ; → :role :database, :tech "Redis"
+#+begin_src clojure
+(diagram "Datomic-backed app"
+  (webapp       ui    "Reagent SPA")           ; → :tech "Web"
+  (rest-api     api   "Pedestal API")          ; → :tech "REST API"
+  (postgres-db  store "Datomic storage")       ; → :role :database, :tech "PostgreSQL"
+  (redis-cache  cache "ring-session store"))   ; → :role :database, :tech "Redis"
 #+end_src
 
 ** Bidirectional edges, named or unnamed
 
-#+begin_src lisp
-(-> a b)                      ; a → b
-(-> a b "uses")               ; a → b, labelled
-(-> a b "calls" :tech "gRPC") ; with tech tag
-(<-> a b "syncs")             ; a ↔ b
+#+begin_src clojure
+(-> editor   nrepl     "evaluates")          ; editor → nrepl
+(-> nrepl    runtime   "bencode")            ; nrepl → runtime
+(-> runtime  shadow    "hot-reload" :tech "websocket")
+(<-> cider   nrepl     "middleware ops")     ; bidirectional
 #+end_src
 
 ** Nested systems for system-of-systems landscapes
 
-#+begin_src lisp
-(diagram "Bank Group"
-  (system retail "Retail Banking"
-    (container web "Web"))
-  (system corp "Corporate Banking"
-    (container portal "Portal"))
-  (-> retail corp "shares customer data"))
+#+begin_src clojure
+(diagram "Clojure dev loop"
+  (system tooling "Local tooling"
+    (container repl   "JVM REPL")
+    (container shadow "shadow-cljs"))
+  (system app "Running app"
+    (container backend  "Pedestal")
+    (container frontend "Reagent SPA"))
+  (-> tooling app "hot-reload + eval"))
 #+end_src
 
 ** One source, multiple zoom levels
