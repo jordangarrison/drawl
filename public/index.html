@@ -7,13 +7,15 @@
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-  <header><h1>drawl</h1><span class="tag">live preview</span></header>
+  <header>
+    <h1>drawl</h1>
+    <span class="tag">live preview</span>
+    <button id="cheatsheet-toggle" type="button" title="Cheatsheet (Ctrl+/)">?</button>
+  </header>
   <main>
     <section class="pane src">
       <h2>source</h2>
-      <textarea id="src" spellcheck="false">(diagram "Hello drawl"
-  (system foo "Foo system"))
-</textarea>
+      <div id="editor"></div>
     </section>
     <section class="pane out">
       <h2>render</h2>
@@ -25,6 +27,120 @@
       </details>
     </section>
   </main>
+
+  <aside id="cheatsheet" aria-hidden="true">
+    <div class="cheatsheet-panel">
+      <header>
+        <h2>Cheatsheet</h2>
+        <nav class="tabs">
+          <button class="tab" data-tab="keys" type="button">Keyboard</button>
+          <button class="tab" data-tab="drawl" type="button">Drawl syntax</button>
+        </nav>
+        <button id="cheatsheet-close" type="button" aria-label="Close">×</button>
+      </header>
+
+      <div class="tab-panel" data-tab="keys">
+      <section>
+        <h3>Editing</h3>
+        <dl>
+          <dt><kbd>(</kbd> <kbd>[</kbd> <kbd>{</kbd> <kbd>"</kbd></dt><dd>auto-close pair</dd>
+          <dt><kbd>Tab</kbd></dt><dd>reindent line</dd>
+          <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></dt><dd>undo / redo</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Paredit</h3>
+        <dl>
+          <dt><kbd>Ctrl</kbd>+<kbd>→</kbd></dt><dd>slurp forward</dd>
+          <dt><kbd>Ctrl</kbd>+<kbd>←</kbd></dt><dd>barf forward</dd>
+          <dt><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd></dt><dd>slurp backward</dd>
+          <dt><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd></dt><dd>barf backward</dd>
+          <dt><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd></dt><dd>kill sexp</dd>
+          <dt><kbd>Alt</kbd>+<kbd>S</kbd></dt><dd>splice (unwrap parent)</dd>
+          <dt><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></dt><dd>split sexp</dd>
+          <dt><kbd>Alt</kbd>+<kbd>J</kbd></dt><dd>join sexps</dd>
+          <dt><kbd>Alt</kbd>+<kbd>↑</kbd> / <kbd>Alt</kbd>+<kbd>↓</kbd></dt><dd>raise / wrap</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Navigation</h3>
+        <dl>
+          <dt><kbd>Alt</kbd>+<kbd>→</kbd> / <kbd>Alt</kbd>+<kbd>←</kbd></dt><dd>move by sexp</dd>
+          <dt><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd></dt><dd>expand selection</dd>
+          <dt><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd></dt><dd>shrink selection</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>App</h3>
+        <dl>
+          <dt><kbd>Ctrl</kbd>+<kbd>/</kbd></dt><dd>toggle this panel</dd>
+          <dt><kbd>Esc</kbd></dt><dd>close this panel</dd>
+        </dl>
+      </section>
+      <p class="hint">Full reference: <a href="https://nextjournal.github.io/clojure-mode/" target="_blank" rel="noopener">nextjournal/clojure-mode</a></p>
+      </div><!-- /tab-panel keys -->
+
+      <div class="tab-panel" data-tab="drawl">
+      <section>
+        <h3>Top level</h3>
+        <pre><code>(diagram "Title"
+  &lt;forms...&gt;)</code></pre>
+        <p>Exactly one <code>diagram</code> per source. Multiple top-level forms allowed; user <code>defmacro</code> may sit outside.</p>
+      </section>
+      <section>
+        <h3>Elements</h3>
+        <dl>
+          <dt><code>(person id "Label")</code></dt><dd>actor (user, role)</dd>
+          <dt><code>(system id "Label" &lt;children&gt;)</code></dt><dd>system; children become a System_Boundary</dd>
+          <dt><code>(container id "Label" :tech "X")</code></dt><dd>inside a system</dd>
+          <dt><code>(component id "Label" :tech "X")</code></dt><dd>inside a container</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Attributes (positional, then keyword/value)</h3>
+        <dl>
+          <dt><code>:external true</code></dt><dd>flips to <code>_Ext</code> in C4</dd>
+          <dt><code>:role :database</code></dt><dd>shape hint (cylinder for db)</dd>
+          <dt><code>:tech "Phoenix"</code></dt><dd>tech tag, rendered in label</dd>
+          <dt><code>:style "dashed"</code></dt><dd>passes through to dot/mermaid</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Relationships</h3>
+        <dl>
+          <dt><code>(-&gt; a b)</code></dt><dd>directed edge</dd>
+          <dt><code>(-&gt; a b "uses")</code></dt><dd>directed edge with label</dd>
+          <dt><code>(-&gt; a b "uses" :tech "HTTPS")</code></dt><dd>edge with tech</dd>
+          <dt><code>(&lt;-&gt; a b "talks")</code></dt><dd>bidirectional</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>Built-in macros</h3>
+        <dl>
+          <dt><code>(webapp id "Label")</code></dt><dd>container with web tech</dd>
+          <dt><code>(rest-api id "Label")</code></dt><dd>API container</dd>
+          <dt><code>(postgres-db id "Label")</code></dt><dd>:role :database</dd>
+          <dt><code>(redis-cache id "Label")</code></dt><dd>:role :database</dd>
+        </dl>
+      </section>
+      <section>
+        <h3>User macros</h3>
+        <pre><code>(defmacro service [id label tech]
+  (container id label :tech tech))
+
+(diagram "App"
+  (service api "API" "Phoenix"))</code></pre>
+        <p>Top-level only. User macros override built-ins (with a warning).</p>
+      </section>
+      <section>
+        <h3>Levels</h3>
+        <p>Inferred: deepest <code>:kind</code> wins (component &gt; container &gt; context). Filter via <code>(drawl.ir/at-level :context ir)</code> in the JVM API.</p>
+      </section>
+      <p class="hint">Full grammar: <a href="https://github.com/jordangarrison/drawl/blob/main/GRAMMAR.org" target="_blank" rel="noopener">GRAMMAR.org</a></p>
+      </div><!-- /tab-panel drawl -->
+    </div>
+  </aside>
+
   <script src="/js/main.js"></script>
 </body>
 </html>

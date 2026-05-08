@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) and other AI coding agents when working with code in this repository. `CLAUDE.md` is a symlink to this file for Claude Code's discovery convention.
 
-> Note: this guide stays in markdown for tool-discovery (Claude Code / Codex agents look for `CLAUDE.md` / `AGENTS.md` by name). The canonical design document `SPEC.org` is in org-mode.
+> Note: this guide stays in markdown for tool-discovery (Claude Code / Codex agents look for `CLAUDE.md` / `AGENTS.md` by name). The canonical design document `SPEC.org` is in org-mode. The user-facing source language is documented in `GRAMMAR.org`.
 
 ## Project status
 

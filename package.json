@@ -10,6 +10,20 @@
     "shadow-cljs": "^2.28.18"
   },
   "dependencies": {
-    "@viz-js/viz": "^3.26.0"
+    "@codemirror/autocomplete": "6.20.2",
+    "@codemirror/commands": "6.10.3",
+    "@codemirror/lang-markdown": "6.0.0",
+    "@codemirror/language": "6.12.3",
+    "@codemirror/lint": "6.9.6",
+    "@codemirror/search": "6.7.0",
+    "@codemirror/state": "6.6.0",
+    "@codemirror/view": "6.42.1",
+    "@lezer/common": "1.5.2",
+    "@lezer/generator": "1.8.0",
+    "@lezer/highlight": "1.2.3",
+    "@lezer/lr": "1.4.10",
+    "@nextjournal/lezer-clojure": "1.0.0",
+    "@viz-js/viz": "^3.26.0",
+    "w3c-keyname": "2.2.8"
   }
 }

@@ -13,7 +13,7 @@ The same =.cljc= core ships three targets:
 
 * Status
 
-Pre-v0.1, in flight. Vertical slices delivered: parser, walker, IR, dot emitter, level inference (=:context= / =:container= / =:component=), at-level filter, nesting validation, ref/duplicate-id checks, and a live shadow-cljs preview that re-renders SVG on every keystroke. See [[file:SPEC.org][SPEC.org]] for the full design and [[file:AGENTS.md][AGENTS.md]] for the dev guide.
+Pre-v0.1, in flight. Vertical slices delivered: parser, walker, IR, dot emitter, level inference (=:context= / =:container= / =:component=), at-level filter, nesting validation, ref/duplicate-id checks, and a live shadow-cljs preview with CodeMirror 6 + clojure-mode. See [[file:GRAMMAR.org][GRAMMAR.org]] for the source language, [[file:SPEC.org][SPEC.org]] for the full design, and [[file:AGENTS.md][AGENTS.md]] for the dev guide.
 
 * Quick start
 
