@@ -3,6 +3,7 @@
   (:refer-clojure :exclude [compile])
   (:require [drawl.parser :as parser]
             [drawl.walker :as walker]
+            [drawl.macros]
             [drawl.ir :as ir]
             [drawl.emit.dot :as dot]))
 

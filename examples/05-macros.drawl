@@ -1,0 +1,16 @@
+(diagram "Storefront — macros + roles + external"
+  (person customer "Customer")
+
+  (system store "Storefront"
+    (phoenix-app web "Web App")
+    (rest-api api "Public API")
+    (postgres-db db "Postgres")
+    (redis-cache cache "Cache")
+    (-> web api "renders via")
+    (-> api db "reads/writes" :tech "JDBC")
+    (<-> api cache "session sync"))
+
+  (system stripe "Stripe" :external true)
+
+  (-> customer web "browses" :tech "HTTPS")
+  (-> api stripe "charges" :tech "REST" :style :dashed))
