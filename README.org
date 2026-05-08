@@ -147,6 +147,44 @@ Levels are *inferred* — deepest =:kind= wins (=component= > =container= > =con
 
 The browser SPA ships a CodeMirror 6 editor wired to nextjournal/clojure-mode (paren matching, slurp/barf, auto-close, syntax highlight). Press *Ctrl+/* for a built-in cheatsheet covering both keyboard shortcuts and drawl syntax.
 
+* Deploy
+
+The flake exposes the SPA as a Nix package and a NixOS module so you can host it anywhere you run NixOS:
+
+- =packages.default= — fixed-output build of the optimised SPA (=$out/share/drawl/{index.html,styles.css,js/main.js}=).
+- =nixosModules.default= — =services.drawl= with optional nginx + ACME wrapper.
+
+Add it to your system flake:
+
+#+begin_src nix
+{
+  inputs.drawl = {
+    url = "github:jordangarrison/drawl";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, drawl, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        drawl.nixosModules.default
+        ({ ... }: {
+          services.drawl = {
+            enable      = true;
+            host        = "drawl.example.com";
+            nginx.enable    = true;
+            nginx.enableACME = true;
+          };
+        })
+      ];
+    };
+  };
+}
+#+end_src
+
+If you already manage nginx + ACME elsewhere (e.g. Cloudflare DNS-01, a tunnel, or a shared reverse proxy), leave =services.drawl.nginx.enable= off and point your own vhost at =${config.services.drawl.package}/share/drawl=.
+
+Live deployment: [[https://drawl.jordangarrison.dev][drawl.jordangarrison.dev]] runs from this exact module behind a Cloudflare Tunnel — see =nix/module.nix= for the option surface.
+
 * Roadmap
 
 See [[file:SPEC.org::*8.][SPEC §8]]. Headlines:
