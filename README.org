@@ -4,6 +4,8 @@
 
 /A Lisp for diagrams. C4-aligned, browser-native, CLI-friendly./
 
+Try it in the browser: [[https://drawl.jordangarrison.dev][drawl.jordangarrison.dev]].
+
 drawl is a small Lisp surface for declaring diagrams. Forms nest, edges reference elements by name, attributes are keyword/value pairs. The compiler reads source as Clojure forms, walks them into a single IR, and emits a backend string (graphviz dot today; mermaid C4 + Excalidraw planned).
 
 The same =.cljc= core ships three targets:
@@ -16,6 +18,10 @@ The same =.cljc= core ships three targets:
 Pre-v0.1, in flight. Vertical slices delivered: parser, walker, IR, dot emitter, level inference (=:context= / =:container= / =:component=), at-level filter, nesting validation, ref/duplicate-id checks, and a live shadow-cljs preview with CodeMirror 6 + clojure-mode. See [[file:GRAMMAR.org][GRAMMAR.org]] for the source language, [[file:SPEC.org][SPEC.org]] for the full design, and [[file:AGENTS.md][AGENTS.md]] for the dev guide.
 
 * Quick start
+
+No install: open [[https://drawl.jordangarrison.dev][drawl.jordangarrison.dev]] and start typing.
+
+Local dev:
 
 #+begin_src bash
 nix develop                    # JVM, Clojure, Babashka, Node, graphviz, mermaid-cli
