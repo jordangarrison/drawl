@@ -66,7 +66,7 @@ pkgs.stdenv.mkDerivation {
 
   outputHashMode = "recursive";
   outputHashAlgo = "sha256";
-  outputHash = "sha256-VCxrFLKCjvNB58F+2m1ngsuaMJJrxY41TONhMb6rqLU=";
+  outputHash = "sha256-OY1wcxYSKjP6D8570Fpk16gKuM8EOpak4bW2slp60LU=";
 
   meta = {
     description = "drawl SPA — a Lisp for C4 diagrams, browser-native";

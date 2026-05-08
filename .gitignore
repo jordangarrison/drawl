@@ -7,4 +7,5 @@
 .shadow-cljs
 node_modules
 public/js
+public/sw.js
 result

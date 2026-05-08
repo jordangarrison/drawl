@@ -5,7 +5,11 @@
   <title>drawl</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="A Lisp for diagrams. C4-aligned, browser-native live editor.">
-  <meta name="theme-color" content="#13b981">
+  <!-- Runtime browser chrome (address bar, status bar): per-scheme. The
+       manifest's theme_color is the install-time PWA chrome and is a
+       single value — the two answer different questions. -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf4ed">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#191724">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png">
@@ -17,6 +21,7 @@
     <h1>drawl</h1>
     <span class="tag">live preview</span>
     <button id="cheatsheet-toggle" type="button" title="Cheatsheet (Ctrl+/)">?</button>
+    <button id="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">☼</button>
   </header>
   <main>
     <section class="pane src">

@@ -6,4 +6,5 @@
         :compiler-options  {:output-feature-set :es8}
         :modules           {:main {:init-fn app.core/init}}
         :output-dir        "public/js"
-        :asset-path        "/js"}}}
+        :asset-path        "/js"
+        :build-hooks       [(build-hooks.sw-stamp/stamp)]}}}

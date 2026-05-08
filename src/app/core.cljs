@@ -4,6 +4,7 @@
   a CM6 view (see app.editor) and the cheatsheet overlay (keyboard +
   drawl syntax) toggles via the ? button or F1."
   (:require [app.editor :as editor]
+            [app.theme :as theme]
             [drawl.compiler :as drawl]
             ["@viz-js/viz" :as viz]))
 
@@ -81,8 +82,12 @@
   (let [out-el (by-id "out")
         err-el (by-id "err")
         dot-el (by-id "dot")
-        run    #(render! % out-el err-el dot-el)]
-    (editor/mount (by-id "editor") initial-doc run)
+        run    #(render! % out-el err-el dot-el)
+        {:keys [set-theme!]} (editor/mount (by-id "editor")
+                                           initial-doc
+                                           run
+                                           (theme/current-active-mode))]
+    (theme/init! {:on-change set-theme!})
     (run initial-doc)
     (wire-cheatsheet!)
     (register-service-worker!)))

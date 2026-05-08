@@ -1,7 +1,10 @@
 // drawl service worker — app-shell precache + offline navigation fallback.
-// Bump CACHE_VERSION on every release that ships new shell assets.
+// CACHE_VERSION is stamped at build time by build-hooks.sw-stamp from
+// the package.json version + a content hash of public/js/main.js.
+// This file is the template (.tmpl); the generated public/sw.js is
+// gitignored. Don't edit public/sw.js directly.
 
-const CACHE_VERSION = "drawl-v1";
+const CACHE_VERSION = "__CACHE_VERSION__";
 const SHELL = [
   "/",
   "/index.html",
