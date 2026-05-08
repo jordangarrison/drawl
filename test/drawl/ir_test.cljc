@@ -43,6 +43,16 @@
     (is (= 0 (count (:relationships ctx)))
         "edge user->web should drop because web (container) was stripped")))
 
+(deftest nested-system-validates
+  (testing "system inside system is allowed (system landscape view)"
+    (let [ir (c/parse "(diagram (system outer (system inner (container c))))")
+          outer (first (:elements ir))
+          inner (first (:children outer))]
+      (is (= 'outer (:id outer)))
+      (is (= :system (:kind inner)))
+      (is (= 'inner (:id inner)))
+      (is (= 'c (-> inner :children first :id))))))
+
 (deftest nesting-validation-component-outside-container
   (is (thrown-with-msg?
         #?(:clj clojure.lang.ExceptionInfo :cljs :default)

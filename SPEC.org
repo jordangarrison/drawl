@@ -235,7 +235,7 @@ The walker enforces:
 
 - Exactly one top-level =(diagram ...)= form (after macro expansion).
 - All form heads are valid: =person=, =system=, =container=, =component=, =->=, =<->=, or a registered macro.
-- Element nesting is sound: components only inside containers, containers only inside systems, systems only inside diagrams.
+- Element nesting is sound: components only inside containers, containers only inside systems, systems only inside diagrams or inside other systems (system-of-systems / landscape views).
 - All edge endpoints resolve.
 - All required positional arguments are present.
 

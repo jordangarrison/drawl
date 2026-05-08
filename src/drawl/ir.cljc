@@ -65,8 +65,9 @@
 
 (def ^:private valid-parent-kinds
   "Per SPEC §3.3: components only inside containers, containers only inside
-  systems, systems only inside diagrams (top level). :person is unrestricted."
-  {:system    #{nil}
+  systems, systems only inside diagrams or other systems (system-of-systems
+  view). :person is unrestricted."
+  {:system    #{nil :system}
    :container #{:system}
    :component #{:container}})
 

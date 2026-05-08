@@ -1,0 +1,20 @@
+(diagram "Acme platform — system landscape"
+  (person customer "Customer")
+
+  (system platform "Acme Platform"
+    (system storefront "Storefront"
+      (webapp web "Web")
+      (rest-api api "API")
+      (postgres-db db "Postgres")
+      (-> web api "calls")
+      (-> api db "JDBC"))
+    (system fulfilment "Fulfilment"
+      (rest-api orders "Orders")
+      (postgres-db orders-db "Orders DB")
+      (-> orders orders-db "JDBC"))
+    (-> api orders "places order"))
+
+  (system stripe "Stripe" :external true)
+
+  (-> customer web "browses")
+  (-> api stripe "charges" :tech "REST" :style :dashed))
