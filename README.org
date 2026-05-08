@@ -15,6 +15,71 @@ The same =.cljc= core ships three targets:
 
 Pre-v0.1, in flight. Vertical slices delivered: parser, walker, IR, dot emitter, level inference (=:context= / =:container= / =:component=), at-level filter, nesting validation, ref/duplicate-id checks, and a live shadow-cljs preview with CodeMirror 6 + clojure-mode. See [[file:GRAMMAR.org][GRAMMAR.org]] for the source language, [[file:SPEC.org][SPEC.org]] for the full design, and [[file:AGENTS.md][AGENTS.md]] for the dev guide.
 
+* Highlights
+
+** User macros — abstract over your own conventions
+
+Define shorthands at the top of any source. Plain symbol substitution, no =eval=, no quoting gymnastics:
+
+#+begin_src lisp
+(defmacro service [id label tech]
+  (container id label :tech tech))
+
+(diagram "Trading Platform"
+  (service api    "API"     "Phoenix")
+  (service quotes "Quotes"  "Elixir + GenServer")
+  (service ledger "Ledger"  "PostgreSQL"))
+#+end_src
+
+User macros override built-ins of the same name (with a warning) — last-write-wins, the way Lisp expects.
+
+** Built-in shorthand for the boring 80%
+
+#+begin_src lisp
+(diagram "Banking"
+  (webapp       web   "Customer Web")        ; → :tech "Web"
+  (rest-api     api   "Banking API")         ; → :tech "REST API"
+  (postgres-db  db    "Customer DB")         ; → :role :database, :tech "PostgreSQL"
+  (redis-cache  cache "Session cache"))      ; → :role :database, :tech "Redis"
+#+end_src
+
+** Bidirectional edges, named or unnamed
+
+#+begin_src lisp
+(-> a b)                      ; a → b
+(-> a b "uses")               ; a → b, labelled
+(-> a b "calls" :tech "gRPC") ; with tech tag
+(<-> a b "syncs")             ; a ↔ b
+#+end_src
+
+** Nested systems for system-of-systems landscapes
+
+#+begin_src lisp
+(diagram "Bank Group"
+  (system retail "Retail Banking"
+    (container web "Web"))
+  (system corp "Corporate Banking"
+    (container portal "Portal"))
+  (-> retail corp "shares customer data"))
+#+end_src
+
+** One source, multiple zoom levels
+
+Levels are *inferred* — deepest =:kind= wins (=component= > =container= > =context=). Filter the IR to a lower level for a context/container/component view of the same source:
+
+#+begin_src clojure
+(require '[drawl.compiler :as drawl]
+         '[drawl.ir :as ir])
+
+(def ir (drawl/parse src))
+(drawl/emit ir :dot)                      ; full detail
+(drawl/emit (ir/at-level :context ir) :dot) ; landscape view
+#+end_src
+
+** Live editor with paredit + cheatsheet
+
+The browser SPA ships a CodeMirror 6 editor wired to nextjournal/clojure-mode (paren matching, slurp/barf, auto-close, syntax highlight). Press *Ctrl+/* for a built-in cheatsheet covering both keyboard shortcuts and drawl syntax.
+
 * Quick start
 
 #+begin_src bash
