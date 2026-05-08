@@ -1,0 +1,9 @@
+{:source-paths ["src"]
+ :dependencies []
+ :dev-http {8090 {:root "public"
+                  :push-state/handler shadow.http.push-state/handle}}
+ :builds
+ {:app {:target     :browser
+        :modules    {:main {:init-fn app.core/init}}
+        :output-dir "public/js"
+        :asset-path "/js"}}}

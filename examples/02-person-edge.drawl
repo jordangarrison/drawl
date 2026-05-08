@@ -1,0 +1,4 @@
+(diagram "Customer visits site"
+  (person customer "Customer" "A site visitor")
+  (system web "Web App")
+  (-> customer web "Visits"))

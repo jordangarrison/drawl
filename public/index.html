@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>drawl</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header><h1>drawl</h1><span class="tag">live preview</span></header>
+  <main>
+    <section class="pane src">
+      <h2>source</h2>
+      <textarea id="src" spellcheck="false">(diagram "Hello drawl"
+  (system foo "Foo system"))
+</textarea>
+    </section>
+    <section class="pane out">
+      <h2>render</h2>
+      <div id="out"></div>
+      <pre id="err" class="err"></pre>
+      <details class="raw">
+        <summary>dot source</summary>
+        <pre id="dot"></pre>
+      </details>
+    </section>
+  </main>
+  <script src="/js/main.js"></script>
+</body>
+</html>

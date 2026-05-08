@@ -493,10 +493,24 @@ The same =.cljc= fixture should produce identical IR when run through Clojure (J
 - Add =:excalidraw= to the backend toggle in the SPA and =--backend excalidraw= to the CLI.
 - Snapshot tests against a small Excalidraw scene fixture (the C4 Internet Banking model).
 
+** v0.6 --- Editor support
+drawl is its own Lisp, not Clojure --- the shared reader is an implementation detail, not a language identity. Editor mode therefore derives from =lisp-mode=, *not* =clojure-mode=, so users don't inherit Clojure-specific behavior (cider hooks, =deps.edn= project detection, =defn=-style indentation, namespace assumptions) on =.drawl= buffers.
+
+- =editor/emacs/drawl-mode.el= --- =define-derived-mode drawl-mode lisp-mode=. Registers =.drawl= in =auto-mode-alist=. Ships:
+  - A small syntax table extending =lisp-mode-syntax-table= for Clojure-reader tokens drawl actually uses: =:keyword=, =[vector]=, ={map}=, =;= line comments. (No tagged literals, no metadata reader macros --- drawl source doesn't use them.)
+  - Font-lock for the built-in heads (=diagram=, =person=, =system=, =container=, =component=, =->=, =<->=) and the shorthand macros (=phoenix-app= et al.).
+  - Plain Lisp indentation (every form indented as a function call). drawl has no =let=, no =defn=, so the simple rule is correct.
+  - =drawl-mode-hook= recommends =paredit-mode= or =smartparens-strict-mode= for structural editing (slurp/barf), since we don't inherit clojure-mode's bindings.
+  - =M-x drawl-compile= --- shells to =drawl compile= on the current buffer, opens output in a side buffer.
+  - =M-x drawl-render= --- shells to =drawl render= on the current buffer, opens the SVG inline.
+  - =M-x drawl-lint= --- runs =drawl lint=, surfaces errors via flymake/flycheck.
+- =editor/vscode/= --- TextMate grammar + extension that wraps the same CLI calls. Lower priority.
+- Optional =drawl lsp= subcommand: emits diagnostics, completion (element ids in edge =from=/=to= positions, attribute keys, valid =:role= values), and go-to-definition for element ids. Built on lsp4clj. Both Emacs (=eglot=/=lsp-mode=) and VS Code wire to it. With LSP carrying the semantic load, the static =drawl-mode= can stay tiny.
+- Tree-sitter grammar lands here only if the LSP route doesn't materialise --- LSP diagnostics + lisp-mode highlighting cover most of what tree-sitter would buy.
+
 ** Deferred
 - User-defined macros at runtime (requires self-hosted CLJS, ~1MB bundle).
 - GraalVM native-image CLI for sub-ms startup.
-- Tree-sitter grammar for cross-editor highlighting.
 - Additional backends: PlantUML, Structurizr DSL.
 - Multi-view publishing: same source generating context, container, and component views in one render pass.
 - Org-babel =ob-drawl= package for Emacs.

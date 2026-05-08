@@ -1,0 +1,8 @@
+(diagram "API components"
+  (system bank "Bank"
+    (container api "API"
+      (component sign-in "Sign-In Controller")
+      (component accounts "Accounts Controller")
+      (component repo "Account Repository")
+      (-> sign-in repo "Reads")
+      (-> accounts repo "Reads/writes"))))
