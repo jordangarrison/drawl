@@ -1,15 +1,52 @@
 {
-  description = "A very basic flake";
+  description = "drawl — a Lisp for diagrams. C4-aligned, browser-native, CLI-friendly.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs }: {
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        jdk = pkgs.jdk21;
+      in {
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            jdk
+            clojure
+            babashka
+            bbin
+            nodejs_22
+            clj-kondo
+            graphviz
+            mermaid-cli
+          ];
 
-    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
+          shellHook = ''
+            export JAVA_HOME=${jdk}
 
-    packages.x86_64-linux.default = self.packages.x86_64-linux.hello;
+            # Install bbin tools into a repo-local prefix so they don't
+            # pollute ~/.local/bin. bbin uses deps.clj under the hood,
+            # which wants to write CLJ_CONFIG (read-only on nix-managed
+            # setups) — redirect that locally too.
+            export BABASHKA_BBIN_BIN_DIR="$PWD/.bbin/bin"
+            export BABASHKA_BBIN_JARS_DIR="$PWD/.bbin/jars"
+            export CLJ_CONFIG="$PWD/.bbin/clojure"
+            export DEPS_CLJ_TOOLS_DIR="$PWD/.bbin/deps-clj"
+            export PATH="$BABASHKA_BBIN_BIN_DIR:$PATH"
+            mkdir -p "$BABASHKA_BBIN_BIN_DIR" "$BABASHKA_BBIN_JARS_DIR" "$CLJ_CONFIG" "$DEPS_CLJ_TOOLS_DIR"
 
-  };
+            if [ ! -x "$BABASHKA_BBIN_BIN_DIR/clj-nrepl-eval" ]; then
+              echo "drawl: installing clj-nrepl-eval (bbin, clojure-mcp-light v0.2.2)…"
+              bbin install \
+                https://github.com/bhauman/clojure-mcp-light.git --tag v0.2.2 \
+                --as clj-nrepl-eval \
+                --main-opts '["-m" "clojure-mcp-light.nrepl-eval"]' \
+                >/dev/null
+            fi
+          '';
+        };
+      });
 }
