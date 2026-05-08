@@ -92,3 +92,4 @@ From SPEC.org §1: not replacing Structurizr, not implementing general graph lay
 - Never force push.
 - File extension is `.drawl`. CLI command is `drawl`.
 - When in doubt about syntax or semantics, the spec is the source of truth — update `SPEC.org` in the same commit if behavior diverges intentionally.
+- **PWA cache invalidation**: when shell assets change (`public/{index.html, styles.css, js/main.js, manifest.webmanifest, icons/*}`), bump `CACHE_VERSION` in `public/sw.js`. Installed clients keep the stale shell otherwise.
