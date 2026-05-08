@@ -64,11 +64,11 @@
     ir))
 
 (def ^:private valid-parent-kinds
-  "Per SPEC §3.3: components only inside containers, containers only inside
-  systems, systems only inside diagrams or other systems (system-of-systems
-  view). :person is unrestricted."
+  "Per SPEC §3.3: components only inside containers; containers inside systems
+  or other containers (sub-containers); systems inside diagrams or other
+  systems (system-of-systems view). :person is unrestricted."
   {:system    #{nil :system}
-   :container #{:system}
+   :container #{:system :container}
    :component #{:container}})
 
 (defn- parent-label [k] (if k (name k) "diagram"))

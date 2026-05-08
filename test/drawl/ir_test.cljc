@@ -53,6 +53,16 @@
       (is (= 'inner (:id inner)))
       (is (= 'c (-> inner :children first :id))))))
 
+(deftest nested-container-validates
+  (testing "container inside container is allowed (sub-container grouping)"
+    (let [ir (c/parse "(diagram (system s (container outer (container inner (component c)))))")
+          outer (-> ir :elements first :children first)
+          inner (first (:children outer))]
+      (is (= 'outer (:id outer)))
+      (is (= :container (:kind inner)))
+      (is (= 'inner (:id inner)))
+      (is (= 'c (-> inner :children first :id))))))
+
 (deftest nesting-validation-component-outside-container
   (is (thrown-with-msg?
         #?(:clj clojure.lang.ExceptionInfo :cljs :default)

@@ -1,0 +1,21 @@
+;; User-defined shorthand. Templates live at the top level, before the diagram.
+;; Inside the body, params bind by symbol; the symbol after `&` splices its
+;; captured args wherever it appears as a leaf in a list.
+
+(defmacro mongo-db [name & opts]
+  (container name :role :database :tech "MongoDB" opts))
+
+(defmacro micro-service [name & opts]
+  (container name :tech "gRPC" opts))
+
+(diagram "Order service — user macros"
+  (person customer "Customer")
+
+  (system orders "Orders Service"
+    (micro-service api "API")
+    (micro-service worker "Background Worker")
+    (mongo-db store "Order Store")
+    (-> api store "reads/writes")
+    (-> worker store "writes"))
+
+  (-> customer api "places orders" :tech "HTTPS"))

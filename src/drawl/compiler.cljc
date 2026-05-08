@@ -1,17 +1,29 @@
 (ns drawl.compiler
-  "Public API. Orchestrates parser -> walker -> ir -> emitter."
+  "Public API. Orchestrates parser -> macro registration -> walker -> ir -> emitter."
   (:refer-clojure :exclude [compile])
   (:require [drawl.parser :as parser]
             [drawl.walker :as walker]
-            [drawl.macros]
+            [drawl.macros :as macros]
             [drawl.ir :as ir]
             [drawl.emit.dot :as dot]))
 
-(defn- diagram-form
-  "Returns the single (diagram ...) form among parsed top-level forms.
+(defn- form-head [f] (when (seq? f) (first f)))
+
+(defn- collect-macros
+  "Reduce top-level (defmacro ...) forms into a registry, seeded with builtins.
+  Warns on override per drawl.macros/register."
+  [forms]
+  (reduce (fn [reg form]
+            (let [[head template] (macros/parse-defmacro form)]
+              (macros/register reg head template)))
+          macros/builtins
+          (filter #(= 'defmacro (form-head %)) forms)))
+
+(defn- the-diagram
+  "Returns the single (diagram ...) form among non-defmacro top-levels.
   Throws ex-info if zero or more than one are present."
   [forms]
-  (let [diagrams (filter #(and (seq? %) (= 'diagram (first %))) forms)]
+  (let [diagrams (filter #(= 'diagram (form-head %)) forms)]
     (when (not= 1 (count diagrams))
       (throw (ex-info (str "Expected exactly one (diagram ...) form, got "
                            (count diagrams))
@@ -21,12 +33,12 @@
 (defn parse
   "Source string -> IR map. Throws ex-info on parse/walk errors."
   [source]
-  (-> source
-      parser/parse-forms
-      diagram-form
-      (walker/walk-form {})
-      ir/with-level
-      ir/validate))
+  (let [forms (parser/parse-forms source)
+        ctx  {:macros (collect-macros forms)}]
+    (-> (the-diagram forms)
+        (walker/walk-form ctx)
+        ir/with-level
+        ir/validate)))
 
 (defn emit
   "IR -> output string for the given backend."

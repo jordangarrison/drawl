@@ -1,20 +1,36 @@
 (ns drawl.walker-test
   (:require [clojure.test :refer [deftest is testing]]
             [drawl.walker :as walker]
-            [drawl.parser :as parser]))
+            [drawl.parser :as parser]
+            [drawl.compiler :as c]))
 
 (defn- parse-one [src]
   (->> (parser/parse-forms src)
        (filter #(and (seq? %) (= 'diagram (first %))))
        first))
 
-(deftest split-attrs-basic
-  (is (= [{:tech "Phoenix"} '(:foo)]
-         (walker/split-attrs '(:tech "Phoenix" :foo))))
-  (is (= [{} '(child)]
-         (walker/split-attrs '(child))))
-  (is (= [{:a 1 :b 2} '()]
-         (walker/split-attrs '(:a 1 :b 2)))))
+(deftest split-header-positional-then-attrs
+  (let [[strs attrs children] (walker/split-header '("Title" "Desc" :tech "X"))]
+    (is (= ["Title" "Desc"] strs))
+    (is (= {:tech "X"} attrs))
+    (is (= '() children))))
+
+(deftest split-header-attrs-then-positional
+  (testing "the relaxed rule lets attrs precede positional strings"
+    (let [[strs attrs children] (walker/split-header '(:tech "X" "Title"))]
+      (is (= ["Title" nil] strs))
+      (is (= {:tech "X"} attrs))
+      (is (= '() children)))))
+
+(deftest split-header-stops-at-list
+  (let [[strs attrs children] (walker/split-header '("T" :a 1 (child)))]
+    (is (= ["T" nil] strs))
+    (is (= {:a 1} attrs))
+    (is (= '((child)) children))))
+
+(deftest split-header-last-write-wins
+  (let [[_ attrs _] (walker/split-header '(:tech "first" :tech "second"))]
+    (is (= {:tech "second"} attrs))))
 
 (deftest diagram-with-system
   (let [ir (walker/walk-form (parse-one "(diagram \"T\" (system foo \"Foo\"))") {})]
@@ -45,15 +61,12 @@
     (is (= 'b (:to edge)))
     (is (= "sync" (:description edge)))))
 
-;; Built-in macros (SPEC §2.6). drawl.macros must be loaded so the walk-form
-;; defmethods register; in production drawl.compiler does this require.
-
-(require '[drawl.macros])
+;; Built-in macros (SPEC §2.6) live in the per-compile :macros registry that
+;; drawl.compiler seeds with drawl.macros/builtins. Tests go through the
+;; full pipeline so the registry is populated.
 
 (defn- walk-container-from-macro [src]
-  (-> (parse-one src)
-      (walker/walk-form {})
-      :elements first :children first))
+  (-> (c/parse src) :elements first :children first))
 
 (deftest webapp-expands-to-container
   (let [el (walk-container-from-macro
@@ -92,3 +105,57 @@
              "(diagram (system bank (webapp web (component foo))))")]
     (is (= 1 (count (:children el))))
     (is (= :component (-> el :children first :kind)))))
+
+;; User-defined macros via top-level (defmacro ...) forms.
+
+(deftest user-defmacro-expands-and-renders
+  (let [src "(defmacro mongo-db [name & opts]
+               (container name :role :database :tech \"MongoDB\" opts))
+             (diagram (system shop (mongo-db users \"Users\")))"
+        el  (-> (c/parse src) :elements first :children first)]
+    (is (= :container (:kind el)))
+    (is (= 'users (:id el)))
+    (is (= "Users" (:title el)))
+    (is (= :database (-> el :attrs :role)))
+    (is (= "MongoDB" (-> el :attrs :tech)))))
+
+(deftest user-defmacro-overrides-builtin-with-warning
+  (let [src "(defmacro postgres-db [name & opts]
+               (container name :tech \"YugabyteDB\" opts))
+             (diagram (system s (postgres-db db \"DB\")))"
+        warn-out (with-out-str
+                   (binding [*err* *out*]
+                     (let [el (-> (c/parse src) :elements first :children first)]
+                       (is (= "YugabyteDB" (-> el :attrs :tech))
+                           "user macro replaces the built-in template")
+                       (is (nil? (-> el :attrs :role))
+                           "user template did not include :role"))))]
+    (is (re-find #"redefining macro `postgres-db`" warn-out))))
+
+(deftest user-macro-supports-nested-expansion
+  (let [src "(defmacro store [name & body]
+               (system name :external false body))
+             (diagram (store acme (webapp web)))"
+        el  (-> (c/parse src) :elements first)]
+    (is (= :system (:kind el)))
+    (is (= 'acme (:id el)))
+    (is (= 1 (count (:children el))))
+    (is (= 'web (-> el :children first :id)))
+    (is (= "Web" (-> el :children first :attrs :tech))
+        "the inner webapp call still expanded via the registry")))
+
+(deftest user-macro-no-rest-param
+  (let [src "(defmacro fixed [n]
+               (container n :tech \"Fixed\"))
+             (diagram (system s (fixed c)))"
+        el  (-> (c/parse src) :elements first :children first)]
+    (is (= :container (:kind el)))
+    (is (= 'c (:id el)))
+    (is (= "Fixed" (-> el :attrs :tech)))))
+
+(deftest defmacro-malformed-throws
+  (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"defmacro requires a symbol name"
+        (c/parse "(defmacro \"oops\" [x] (container x))
+                  (diagram (system s))"))))

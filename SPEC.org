@@ -43,14 +43,18 @@ Source is parsed by Clojure's reader --- =clojure.edn/read-string= on JVM/Babash
 
 ** 2.2 Form Grammar
 #+begin_example
-form        := (head head-args... attr-pairs... children...)
+form        := (head head-args... header... children...)
 head        := symbol
 head-args   := positional arguments specific to the head
-attr-pairs  := keyword value, repeated zero or more times
-children    := nested forms
+                (e.g. element ID symbol, edge endpoints)
+header      := strings (≤2: title, description) and :keyword value
+                pairs, in any order
+children    := nested list forms
 #+end_example
 
-*Attribute parsing rule*: positional arguments come first, keyword-value pairs come immediately after and are parsed greedily until the first non-keyword form, and everything from that point is treated as children. Single-pass, no backtracking.
+*Header parsing rule*: after the head's required positional arguments, the walker peels strings (capped at 2 — bound to title and description in the order encountered) and keyword/value pairs (last-write wins on duplicate keys) in any interleaved order. The first non-string, non-keyword form ends the header and starts children. Single pass, no backtracking.
+
+This relaxed rule makes template macros (§2.6) trivially composable: a macro that injects =:tech "Web"= before splicing user opts can be called with a positional title, and the walker still binds the title correctly.
 
 ** 2.3 Forms
 *** =diagram=
@@ -150,8 +154,14 @@ Unknown attributes are accepted by the parser and walker, and ignored by the emi
 - Containers and systems ARE referenceable. An edge between two systems renders as a boundary-to-boundary edge --- handled per backend (mermaid C4 supports natively, graphviz uses cluster =lhead=/=ltail=).
 - No lexical scoping. Qualified references (e.g. =system/component=) are reserved syntax for future use, not implemented in v1.
 
-** 2.6 Built-in Macros
-Shorthand macros expand to canonical forms during walking. v1 ships:
+** 2.6 Macros
+Shorthand expands to canonical forms during walking. The same registry-driven
+mechanism powers both built-in shorthand and user-defined macros — there is
+exactly one macro system.
+
+*** 2.6.1 Built-ins
+v1 ships four pre-seeded templates. Each may be overridden by a user
+=(defmacro ...)= of the same name (with a warning).
 
 | Macro                      | Expands to                                                |
 |----------------------------+-----------------------------------------------------------|
@@ -160,7 +170,35 @@ Shorthand macros expand to canonical forms during walking. v1 ships:
 | =(redis-cache NAME OPTS...)= | =(container NAME :role :cache :tech "Redis" OPTS...)=       |
 | =(rest-api NAME OPTS...)=    | =(container NAME :tech "REST API" OPTS...)=                 |
 
-User-defined =(defmacro ...)= forms in source are NOT supported in v1. They would require self-hosted CLJS (~1MB bundle hit). Built-in shorthand can be extended by adding additional =walk-form= defmethods to the drawl core itself.
+*** 2.6.2 User-defined Macros
+Top-level =(defmacro NAME [params...] body)= forms register a template into
+the per-compile registry. Macros must appear *outside* the diagram (single
+pass, no recursion in registration). Convention: place all =defmacro= forms
+before the =(diagram ...)= form.
+
+#+begin_src lisp
+(defmacro mongo-db [name & opts]
+  (container name :role :database :tech "MongoDB" opts))
+
+(diagram (system shop (mongo-db users "Users")))
+#+end_src
+
+*Substitution.* Inside the body, fixed params bind by symbol — anywhere the
+param symbol appears as a leaf, it's replaced with the bound value. The
+symbol after =&= captures the rest of the call-site args; when it appears as
+a leaf inside any list in the body, that list is spliced in. There is no
+=eval=, no =~=/=~@= reader markers, no compile-time computation: just
+literal forms with parameter substitution.
+
+*Override.* If a =defmacro= name matches a built-in or a previously-defined
+user macro, the new template wins (last definition); a warning is printed
+to standard error.
+
+*Limits in v1.* No nested =defmacro= inside another macro body; the registry
+is built before any walking begins. Macro bodies cannot call themselves
+(infinite recursion is the user's responsibility). Built-in shorthand may
+also be added directly to =drawl.macros/builtins= for stack-neutral
+extensions.
 
 ** 2.7 Example
 #+begin_src lisp
@@ -314,32 +352,38 @@ Multimethod dispatch on head symbol --- keeps the walker open for extension:
 #+begin_src clojure
 (defmulti walk-form (fn [form _ctx] (first form)))
 
-(defmethod walk-form 'diagram [[_ title & rest] ctx]
-  (let [[attrs children] (split-attrs rest)]
-    (assoc ctx
-      :title (when (string? title) title)
-      :attrs attrs
-      :elements (mapv #(walk-form % ctx) children))))
+(defmethod walk-form 'diagram [form ctx]
+  (let [[_ & rest]                 form
+        [[title _] attrs children] (split-header rest)]
+    {:title         title
+     :attrs         attrs
+     :elements      (mapv #(walk-form % ctx) children)}))
 
 (defmethod walk-form 'system    [form ctx] (walk-element :system form ctx))
 (defmethod walk-form 'container [form ctx] (walk-element :container form ctx))
 (defmethod walk-form 'component [form ctx] (walk-element :component form ctx))
 (defmethod walk-form 'person    [form ctx] (walk-element :person form ctx))
 
-(defmethod walk-form '-> [[_ from to & rest] ctx]
-  (let [[desc rest'] (if (string? (first rest))
-                       [(first rest) (next rest)]
-                       [nil rest])
-        [attrs _]    (split-attrs rest')]
-    {:kind :edge :from from :to to :description desc :attrs attrs}))
+(defmethod walk-form '->  [form ctx] (walk-edge false form))
+(defmethod walk-form '<-> [form ctx] (walk-edge true  form))
 #+end_src
 
-Built-in macros are additional defmethods that re-dispatch:
+Macros (built-in *and* user-defined) live in =(:macros ctx)= as a registry of
+=symbol → {:params {:fixed :rest} :body form}=. The =:default= defmethod
+consults this registry: if the head matches, parameters are bound to call-site
+args, the body is substituted, and =walk-form= recurses on the expansion. If
+the head is not in the registry, the walker throws.
 
 #+begin_src clojure
-(defmethod walk-form 'webapp [[_ name & opts] ctx]
-  (walk-form (concat ['container name :tech "Web"] opts) ctx))
+(defmethod walk-form :default [form ctx]
+  (if-let [tpl (get-in ctx [:macros (first form)])]
+    (walk-form (expand tpl form) ctx)
+    (throw (ex-info "Unknown form head" {:type :walk-error :form form}))))
 #+end_src
+
+=drawl.compiler/parse= seeds the registry with =drawl.macros/builtins=, then
+folds in any top-level =(defmacro ...)= forms (last-write wins, with a
+warning).
 
 ** 4.4 Reader Compatibility
 =clojure.edn/read-string= (JVM) and =cljs.reader/read-string= (browser) are nearly but not bug-for-bug identical. Specifically watch for tagged literals and namespaced keywords. The portability test suite (§7.3) loads the same fixture file through both runtimes and asserts identical IR output.
