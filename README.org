@@ -15,6 +15,65 @@ The same =.cljc= core ships three targets:
 
 Pre-v0.1, in flight. Vertical slices delivered: parser, walker, IR, dot emitter, level inference (=:context= / =:container= / =:component=), at-level filter, nesting validation, ref/duplicate-id checks, and a live shadow-cljs preview with CodeMirror 6 + clojure-mode. See [[file:GRAMMAR.org][GRAMMAR.org]] for the source language, [[file:SPEC.org][SPEC.org]] for the full design, and [[file:AGENTS.md][AGENTS.md]] for the dev guide.
 
+* Quick start
+
+#+begin_src bash
+nix develop                    # JVM, Clojure, Babashka, Node, graphviz, mermaid-cli
+npm install                    # shadow-cljs + @viz-js/viz
+npx shadow-cljs watch app      # live SPA at http://localhost:8090/
+#+end_src
+
+Run tests against a JVM REPL:
+
+#+begin_src bash
+clojure -M:test:nrepl          # nREPL on a free port; eval (clojure.test/run-all-tests)
+#+end_src
+
+* Example
+
+#+begin_src lisp
+(diagram "Internet Banking — Containers"
+  (person customer "Banking Customer")
+
+  (system bank "Internet Banking System"
+    (container webapp "Web App")
+    (container spa "SPA")
+    (container api "API")
+    (container db "Database")
+    (-> spa api "API calls")
+    (-> api db "Reads/writes"))
+
+  (system mainframe "Mainframe Banking")
+
+  (-> customer webapp "Visits bigbank.com")
+  (-> webapp spa "Delivers SPA")
+  (-> api mainframe "Calls"))
+#+end_src
+
+#+CAPTION: Rendered live in the SPA via shadow-cljs + viz.js.
+[[file:images/internet-banking.png]]
+
+Compile to dot:
+
+#+begin_src clojure
+(require '[drawl.compiler :as drawl])
+(drawl/compile (slurp "examples/03-bank-containers.drawl") :dot)
+#+end_src
+
+More examples in [[file:examples/][=examples/=]].
+
+* Architecture
+
+#+begin_example
+source string
+  → parser     (clojure.edn/read-string on JVM/bb, cljs.reader/read-string in browser)
+  → walker     (multimethod on form head; produces IR fragments)
+  → IR         (one nested map: {:title :level :elements :relationships})
+  → emitter    (drawl.emit.dot today; .mermaid + .excalidraw planned)
+#+end_example
+
+Public API in =drawl.compiler=: =parse=, =emit=, =compile=, =validate=, plus =drawl.ir/at-level= for filtering one source to context/container/component views.
+
 * Highlights
 
 ** User macros — abstract over your own conventions
@@ -79,65 +138,6 @@ Levels are *inferred* — deepest =:kind= wins (=component= > =container= > =con
 ** Live editor with paredit + cheatsheet
 
 The browser SPA ships a CodeMirror 6 editor wired to nextjournal/clojure-mode (paren matching, slurp/barf, auto-close, syntax highlight). Press *Ctrl+/* for a built-in cheatsheet covering both keyboard shortcuts and drawl syntax.
-
-* Quick start
-
-#+begin_src bash
-nix develop                    # JVM, Clojure, Babashka, Node, graphviz, mermaid-cli
-npm install                    # shadow-cljs + @viz-js/viz
-npx shadow-cljs watch app      # live SPA at http://localhost:8090/
-#+end_src
-
-Run tests against a JVM REPL:
-
-#+begin_src bash
-clojure -M:test:nrepl          # nREPL on a free port; eval (clojure.test/run-all-tests)
-#+end_src
-
-* Example
-
-#+begin_src lisp
-(diagram "Internet Banking — Containers"
-  (person customer "Banking Customer")
-
-  (system bank "Internet Banking System"
-    (container webapp "Web App")
-    (container spa "SPA")
-    (container api "API")
-    (container db "Database")
-    (-> spa api "API calls")
-    (-> api db "Reads/writes"))
-
-  (system mainframe "Mainframe Banking")
-
-  (-> customer webapp "Visits bigbank.com")
-  (-> webapp spa "Delivers SPA")
-  (-> api mainframe "Calls"))
-#+end_src
-
-#+CAPTION: Rendered live in the SPA via shadow-cljs + viz.js.
-[[file:images/internet-banking.png]]
-
-Compile to dot:
-
-#+begin_src clojure
-(require '[drawl.compiler :as drawl])
-(drawl/compile (slurp "examples/03-bank-containers.drawl") :dot)
-#+end_src
-
-More examples in [[file:examples/][=examples/=]].
-
-* Architecture
-
-#+begin_example
-source string
-  → parser     (clojure.edn/read-string on JVM/bb, cljs.reader/read-string in browser)
-  → walker     (multimethod on form head; produces IR fragments)
-  → IR         (one nested map: {:title :level :elements :relationships})
-  → emitter    (drawl.emit.dot today; .mermaid + .excalidraw planned)
-#+end_example
-
-Public API in =drawl.compiler=: =parse=, =emit=, =compile=, =validate=, plus =drawl.ir/at-level= for filtering one source to context/container/component views.
 
 * Roadmap
 
