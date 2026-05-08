@@ -2,7 +2,7 @@
   (person customer "Customer")
 
   (system store "Storefront"
-    (phoenix-app web "Web App")
+    (webapp web "Web App")
     (rest-api api "Public API")
     (postgres-db db "Postgres")
     (redis-cache cache "Cache")

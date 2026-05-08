@@ -55,13 +55,13 @@
       (walker/walk-form {})
       :elements first :children first))
 
-(deftest phoenix-app-expands-to-container
+(deftest webapp-expands-to-container
   (let [el (walk-container-from-macro
-             "(diagram (system bank (phoenix-app web \"Web App\")))")]
+             "(diagram (system bank (webapp web \"Web App\")))")]
     (is (= :container (:kind el)))
     (is (= 'web (:id el)))
     (is (= "Web App" (:title el)))
-    (is (= "Phoenix" (-> el :attrs :tech)))))
+    (is (= "Web" (-> el :attrs :tech)))))
 
 (deftest postgres-db-injects-role-and-tech
   (let [el (walk-container-from-macro
@@ -83,12 +83,12 @@
 
 (deftest user-attrs-override-macro-attrs
   (let [el (walk-container-from-macro
-             "(diagram (system bank (phoenix-app web :tech \"Custom\")))")]
+             "(diagram (system bank (webapp web :tech \"Custom\")))")]
     (is (= "Custom" (-> el :attrs :tech))
         "user :tech wins because it appears later in the canonical form")))
 
 (deftest macro-children-walk-as-components
   (let [el (walk-container-from-macro
-             "(diagram (system bank (phoenix-app web (component foo))))")]
+             "(diagram (system bank (webapp web (component foo))))")]
     (is (= 1 (count (:children el))))
     (is (= :component (-> el :children first :kind)))))

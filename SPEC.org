@@ -155,7 +155,7 @@ Shorthand macros expand to canonical forms during walking. v1 ships:
 
 | Macro                      | Expands to                                                |
 |----------------------------+-----------------------------------------------------------|
-| =(phoenix-app NAME OPTS...)= | =(container NAME :tech "Phoenix" OPTS...)=                  |
+| =(webapp NAME OPTS...)=      | =(container NAME :tech "Web" OPTS...)=                      |
 | =(postgres-db NAME OPTS...)= | =(container NAME :role :database :tech "Postgres" OPTS...)= |
 | =(redis-cache NAME OPTS...)= | =(container NAME :role :cache :tech "Redis" OPTS...)=       |
 | =(rest-api NAME OPTS...)=    | =(container NAME :tech "REST API" OPTS...)=                 |
@@ -337,8 +337,8 @@ Multimethod dispatch on head symbol --- keeps the walker open for extension:
 Built-in macros are additional defmethods that re-dispatch:
 
 #+begin_src clojure
-(defmethod walk-form 'phoenix-app [[_ name & opts] ctx]
-  (walk-form (concat ['container name :tech "Phoenix"] opts) ctx))
+(defmethod walk-form 'webapp [[_ name & opts] ctx]
+  (walk-form (concat ['container name :tech "Web"] opts) ctx))
 #+end_src
 
 ** 4.4 Reader Compatibility
@@ -469,7 +469,7 @@ The same =.cljc= fixture should produce identical IR when run through Clojure (J
 - Parser, walker, IR, dot emitter.
 - Browser SPA with editor and dot rendering.
 - localStorage persistence, URL share links.
-- Built-in shorthand macros: =phoenix-app=, =postgres-db=, =redis-cache=, =rest-api=.
+- Built-in shorthand macros: =webapp=, =postgres-db=, =redis-cache=, =rest-api=.
 
 ** v0.2 --- C4 mapping
 - Add =person=, =container= element types to walker.
@@ -498,7 +498,7 @@ drawl is its own Lisp, not Clojure --- the shared reader is an implementation de
 
 - =editor/emacs/drawl-mode.el= --- =define-derived-mode drawl-mode lisp-mode=. Registers =.drawl= in =auto-mode-alist=. Ships:
   - A small syntax table extending =lisp-mode-syntax-table= for Clojure-reader tokens drawl actually uses: =:keyword=, =[vector]=, ={map}=, =;= line comments. (No tagged literals, no metadata reader macros --- drawl source doesn't use them.)
-  - Font-lock for the built-in heads (=diagram=, =person=, =system=, =container=, =component=, =->=, =<->=) and the shorthand macros (=phoenix-app= et al.).
+  - Font-lock for the built-in heads (=diagram=, =person=, =system=, =container=, =component=, =->=, =<->=) and the shorthand macros (=webapp= et al.).
   - Plain Lisp indentation (every form indented as a function call). drawl has no =let=, no =defn=, so the simple rule is correct.
   - =drawl-mode-hook= recommends =paredit-mode= or =smartparens-strict-mode= for structural editing (slurp/barf), since we don't inherit clojure-mode's bindings.
   - =M-x drawl-compile= --- shells to =drawl compile= on the current buffer, opens output in a side buffer.

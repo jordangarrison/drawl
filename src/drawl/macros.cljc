@@ -21,8 +21,8 @@
         [positionals tail]       (peel-strings rest)]
     (concat (list 'container id) positionals attrs-pre tail)))
 
-(defmethod walker/walk-form 'phoenix-app [form ctx]
-  (walker/walk-form (expand form [:tech "Phoenix"]) ctx))
+(defmethod walker/walk-form 'webapp [form ctx]
+  (walker/walk-form (expand form [:tech "Web"]) ctx))
 
 (defmethod walker/walk-form 'postgres-db [form ctx]
   (walker/walk-form (expand form [:role :database :tech "Postgres"]) ctx))
