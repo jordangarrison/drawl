@@ -59,15 +59,14 @@ pkgs.stdenv.mkDerivation {
     runHook preInstall
 
     mkdir -p $out/share/drawl
-    cp public/index.html public/styles.css $out/share/drawl/
-    cp -r public/js $out/share/drawl/js
+    cp -r public/. $out/share/drawl/
 
     runHook postInstall
   '';
 
   outputHashMode = "recursive";
   outputHashAlgo = "sha256";
-  outputHash = "sha256-KgV12WGvFoFZpvNpgNrr/VldxBLUa40Ill7dzHh7Kcs=";
+  outputHash = "sha256-VCxrFLKCjvNB58F+2m1ngsuaMJJrxY41TONhMb6rqLU=";
 
   meta = {
     description = "drawl SPA — a Lisp for C4 diagrams, browser-native";

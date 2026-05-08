@@ -70,6 +70,13 @@
                          (close-cheatsheet!)))
                      true))
 
+(defn- register-service-worker! []
+  (let [host (.-hostname js/location)
+        sw   (.-serviceWorker js/navigator)]
+    (when (and sw (not (contains? #{"localhost" "127.0.0.1" ""} host)))
+      (-> (.register sw "/sw.js")
+          (.catch (fn [e] (js/console.warn "sw register failed:" e)))))))
+
 (defn ^:export init []
   (let [out-el (by-id "out")
         err-el (by-id "err")
@@ -77,4 +84,5 @@
         run    #(render! % out-el err-el dot-el)]
     (editor/mount (by-id "editor") initial-doc run)
     (run initial-doc)
-    (wire-cheatsheet!)))
+    (wire-cheatsheet!)
+    (register-service-worker!)))
