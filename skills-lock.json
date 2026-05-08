@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "clojure-eval": {
+      "source": "smithery.ai",
+      "sourceType": "well-known",
+      "computedHash": "d6d4820d03582628cdac0c6e91190e0f1c3ef657dc4237d8406bedb89db6702e"
+    }
+  }
+}
