@@ -50,6 +50,9 @@ clojure -M:test:nrepl          # nREPL on a free port; eval (clojure.test/run-al
   (-> api mainframe "Calls"))
 #+end_src
 
+#+CAPTION: Rendered live in the SPA via shadow-cljs + viz.js.
+[[file:images/internet-banking.png]]
+
 Compile to dot:
 
 #+begin_src clojure
