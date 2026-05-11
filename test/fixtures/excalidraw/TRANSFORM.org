@@ -1,0 +1,249 @@
+#+TITLE: IR → Excalidraw direct-render transform
+#+STARTUP: showall
+
+* What this fixture is
+
+A hand-authored target =03-bank.excalidraw= against which the future
+=drawl.emit.excalidraw= emitter will be diffed. Coordinates are produced
+by the recursive containment layout described below — no external
+layout tool (no dot, no viz.js). Pin which fields the emitter actually
+touches before writing code.
+
+* Layout algorithm (single pass over the IR)
+
+The IR is already a containment tree. Render it as one.
+
+** Constants
+
+| name           | px  | notes                                       |
+|----------------+-----+---------------------------------------------|
+| =LEAF_H=         |  36 | every leaf shape's height                   |
+| =LEAF_MIN_W=     |  72 | min leaf width                              |
+| =CHAR_W=         |   9 | rough advance for fontSize=16, fontFamily=5 |
+| =PAD_LABEL=      |  24 | horizontal padding inside a leaf shape      |
+| =PAD_SIBLING=    |  24 | gap between sibling shapes                  |
+| =PAD_INNER=      |  16 | inset on left/right/bottom of a frame       |
+| =FRAME_NAME_H=   |  28 | inset on top of a frame for its name        |
+| =LABEL_H=        |  20 | bound text element height                   |
+
+** Recursive ~size~
+
+#+begin_src
+size(el):
+  if el has no children:
+    w = max(LEAF_MIN_W, length(label(el)) * CHAR_W + PAD_LABEL)
+    h = LEAF_H
+    return {w, h}
+  else:
+    children_sizes = [size(c) for c in el.children]
+    inner_w = sum(c.w for c in children_sizes)
+             + PAD_SIBLING * (count(children) - 1)
+    inner_h = max(c.h for c in children_sizes)
+    return {w: inner_w + 2 * PAD_INNER,
+            h: inner_h + FRAME_NAME_H + PAD_INNER}
+#+end_src
+
+For v1 children flow left-to-right, single row. Wrap rule (~>4
+children~: split to a 2-row grid) is a knob the emitter can carry,
+not exercised in this fixture.
+
+** Recursive ~place~
+
+#+begin_src
+place(el, origin_x, origin_y, frame_id):
+  el_w, el_h = size(el)
+  el.{x, y, w, h} = {origin_x, origin_y, el_w, el_h}
+  el.frame_id    = frame_id
+
+  if el has children:
+    cursor_x = origin_x + PAD_INNER
+    cursor_y = origin_y + FRAME_NAME_H
+    for c in el.children:
+      place(c, cursor_x, cursor_y, frame_id = el.id)
+      cursor_x += size(c).w + PAD_SIBLING
+#+end_src
+
+Diagram top level:
+
+#+begin_src
+cursor_x = 0
+for el in ir.elements:
+  el_h = size(el).h
+  y = (max_sibling_h - el_h) / 2          ; vertical centering on the tallest top-level sibling
+  place(el, cursor_x, y, frame_id = null)
+  cursor_x += size(el).w + PAD_SIBLING
+#+end_src
+
+** Worked numbers for =03-bank-containers.drawl=
+
+Diagram elements: =customer= (leaf), =bank= (frame w/ 4 children), =mainframe= (leaf).
+
+| element   | label              | chars | w calc           |    w |  h |
+|-----------+--------------------+-------+------------------+------+----|
+| customer  | Banking Customer   |    16 | 16·9+24          |  168 | 36 |
+| webapp    | Web App            |     7 | 7·9+24           |   87 | 36 |
+| spa       | SPA                |     3 | max(72, 3·9+24)  |   72 | 36 |
+| api       | API                |     3 | max(72, 3·9+24)  |   72 | 36 |
+| db        | Database           |     8 | 8·9+24           |   96 | 36 |
+| mainframe | Mainframe Banking  |    17 | 17·9+24          |  177 | 36 |
+
+Bank frame inner row width: =87 + 72 + 72 + 96 + 3*24 = 399=. Outer: =399 + 2*16 = 431=
+wide, =36 + 28 + 16 = 80= tall.
+
+Top-level siblings (left→right, vertical-center on tallest = bank, =h=80=):
+
+| el        |   x |  y |   w |  h |
+|-----------+-----+----+-----+----|
+| customer  |   0 | 22 | 168 | 36 |
+| bank      | 192 |  0 | 431 | 80 |
+| mainframe | 647 | 22 | 177 | 36 |
+
+Bank's children, inner cursor starts at =(192+16, 0+28) = (208, 28)=:
+
+| el     |   x |  y |  w |  h |
+|--------+-----+----+----+----|
+| webapp | 208 | 28 | 87 | 36 |
+| spa    | 319 | 28 | 72 | 36 |
+| api    | 415 | 28 | 72 | 36 |
+| db     | 511 | 28 | 96 | 36 |
+
+These are the numbers the fixture must produce. The fixture is the
+contract.
+
+* Element mapping (drawl → excalidraw =type=)
+
+| drawl                   | excalidraw =type=     | extra                  |
+|-------------------------+---------------------+------------------------|
+| =:person=                 | =ellipse=             |                        |
+| =:system= leaf            | =rectangle=           | ~roundness: {type: 3}~   |
+| =:system= with children   | (skipped — see below) |                        |
+| =:container=              | =rectangle=           | ~roundness: {type: 3}~   |
+| =:component=              | =rectangle=           |                        |
+| =:role :database=         | =ellipse=             | cylinder approximation |
+| =:role :queue=            | =rectangle=           | ~strokeStyle: "dashed"~  |
+| =:external= attr          | (any of the above)  | ~strokeStyle: "dashed"~  |
+
+A =:system= with children emits a single =frame= element (with =name= =
+the system title) and no surrounding rectangle. Each child carries
+~frameId~ pointing at the frame's id. The frame's bbox comes from
+~size()~ above. =:container= with children works the same way.
+
+* Edge transform
+
+For each edge with ~from~, ~to~, label:
+
+1. Look up the placed from/to shapes (~{x, y, w, h}~).
+2. Pick anchor points along the shape edges:
+   - same row (=|from.y_mid - to.y_mid| < LEAF_H/2=):
+     start = ~(from.x + from.w, from.y_mid)~,
+     end   = ~(to.x,            to.y_mid)~
+   - else: center→center; Excalidraw clips via binding gap.
+3. Emit:
+
+#+begin_src js
+{ type: "arrow",
+  x: start_x, y: start_y,
+  width:  end_x - start_x,
+  height: end_y - start_y,
+  points: [[0, 0], [end_x - start_x, end_y - start_y]],
+  startBinding: { elementId: from_id, focus: 0, gap: 4 },
+  endBinding:   { elementId: to_id,   focus: 0, gap: 4 },
+  startArrowhead: null,           // "arrow" for bidirectional
+  endArrowhead:   "arrow" }
+#+end_src
+
+Critical: the arrow's id MUST also appear in each endpoint shape's
+~boundElements~ as ={id, type: "arrow"}~. One-sided binding visually
+attaches but detaches on drag.
+
+For v1 every edge is a straight segment. Curved/elbowed routing is a
+later knob if needed.
+
+* Labels (text-on-shape, text-on-arrow)
+
+For every shape and arrow, emit a separate ~text~ element with:
+
+- ~containerId~ = the host shape/arrow id
+- ~originalText~ = the user label (Excalidraw will rewrap into ~text~)
+- ~text~       = same as originalText for first emit; loader recomputes
+- ~fontSize: 16~ (Excalidraw =NORMAL_FONT_SIZE=)
+- ~fontFamily: 5~ (Excalifont, current default; numeric, NOT a string)
+- ~textAlign: "center"~, ~verticalAlign: "middle"~, ~lineHeight: 1.25~
+
+For a shape-bound label: ~width~ = container width, ~height~ = =LABEL_H=,
+~y~ = container ~y + (h - LABEL_H)/2~.
+
+For an arrow-bound label: place above the arrow midpoint
+(~y = arrow_y - LABEL_H - 2~).
+
+The host's ~boundElements~ MUST include ={id: textId, type: "text"}~.
+For a shape with both a label and arrows attached, ~boundElements~ holds
+all of them in one array.
+
+* Identity
+
+Deterministic, diffable:
+
+| element     | id                              |
+|-------------+---------------------------------|
+| shape       | =drawl:<source-id>=               |
+| shape label | =drawl:<source-id>:label=         |
+| frame       | =drawl:<source-id>=               |
+| edge        | =drawl:e:<from-id>:<to-id>=       |
+| edge label  | =drawl:e:<from-id>:<to-id>:label= |
+
+~seed~, ~versionNonce~ = =(hash id)= as a 32-bit int.
+~version: 1~, ~updated: 0~ for fully reproducible output.
+
+This fixture uses small hand-picked integers (1001..2041) so the diff
+against a real emitter run only fails on layout math, not on PRNG
+values.
+
+* Envelope
+
+Required to open cleanly in excalidraw.com:
+
+#+begin_src js
+{ type: "excalidraw",
+  version: 2,
+  source: "drawl",
+  appState: { viewBackgroundColor: "#ffffff",
+              gridSize: null,
+              gridStep: 5,
+              theme: "light" },
+  files: {},
+  elements: [...] }
+#+end_src
+
+=version: 2= is the file-format version (unrelated to per-element ~version~).
+
+* Gotchas to keep in mind when writing the emitter
+
+1. ~boundElements~ on a shape is one array carrying ALL bound things —
+   the shape's label AND any incident arrows AND any other bound text.
+   It is not separated by type.
+2. Arrow ~points~ are local to the arrow's ~x,y~. First point must be
+   ~[0,0]~. Forget either and the arrow renders in the wrong place.
+3. ~fontFamily~ is a number (5 = Excalifont). Passing the string
+   "Excalifont" silently breaks text rendering.
+4. ~frameId~ goes on each child; the frame does NOT carry a child list.
+   A child can only belong to one frame.
+5. ~roundness~: shapes use ~{type: 3}~ for proportional rounded corners;
+   arrows use ~{type: 2}~ for curved. =null= for ellipse / text / frame.
+6. Bidirectional bindings: setting only ~startBinding~/~endBinding~ on
+   the arrow without mirroring it in shape ~boundElements~ produces an
+   arrow that *looks* attached but detaches the moment the user drags
+   the shape. Both sides, always.
+7. =version: 2= in the envelope is the file format version — unrelated
+   to per-element ~version~.
+
+* What this fixture unblocks
+
+- A pure ~drawl.emit.excalidraw/emit [ir] → string~ — no IO, no shell.
+- Same emitter runs identically on JVM (clojure/babashka) and CLJS
+  (browser SPA). The SPA can offer a "Download .excalidraw" button
+  with zero extra runtime work.
+- A Babashka CLI ~bb drawl compile --backend excalidraw~ that's a thin
+  wrapper around ~drawl.compiler/compile~.
+- Snapshot tests that diff a future emitter run against this fixture
+  catch any layout-constant drift.

@@ -472,13 +472,15 @@ Top-level header per level: =C4Context=, =C4Container=, =C4Component=.
 ** 6.3 Excalidraw
 For hand-drawn-feel diagrams that round-trip through Excalidraw or excalidraw.com --- the user can edit, restyle, or annotate after generation. Output is an Excalidraw scene JSON document; conventional file extension is =.excalidraw=.
 
-*Layout strategy.* Excalidraw has no auto-layout --- every element needs absolute =x=/=y=/=width=/=height=. The emitter shells out to graphviz =dot -Tjson= (already required by §6.1), parses the resulting node positions, and translates them into Excalidraw element coordinates. This keeps "general-purpose graph layout" off drawl's plate (per §1 non-goals) while still producing a readable scene on first open. Browser builds use the same approach via viz.js.
+*Layout strategy.* Excalidraw has no auto-layout --- every element needs absolute =x=/=y=/=width=/=height=. The emitter computes layout directly from the IR using a recursive containment pass: leaves get a fixed box sized to their label; a parent (system/container with children) lays its children out in a row (wrapping to a grid above a threshold), pads, and is sized to enclose them; siblings at the diagram level flow horizontally. Edges are straight segments between endpoint shape centers, with Excalidraw bindings handling the visual clearance. No external layout tool is required and the same code runs identically on JVM, Babashka, and the browser.
+
+This stays within the §1 non-goal of "general-purpose graph layout" --- the IR is already a containment tree, and rendering a containment tree to a hand-drawn surface is bbox arithmetic, not graph layout. If edge crossings become ugly on a particular diagram, that is what Excalidraw's editor is for; round-trip is the design goal.
 
 | Element                       | Excalidraw output                                                                              |
 |-------------------------------+------------------------------------------------------------------------------------------------|
 | =:person=                     | =ellipse= with text label, sketchy =roughness: 1=                                                  |
 | =:system= (leaf)                | =rectangle= with rounded corners, text label                                                     |
-| =:system= with children         | =rectangle= group containing child elements (=groupIds=)                                           |
+| =:system= with children         | =frame= holding child elements (children carry =frameId=); =name= = system title                       |
 | =:container=                    | =rectangle= with title + =:tech= text bound via =boundElements=                                      |
 | =:role :database=               | =ellipse= (cylinder approximation; Excalidraw has no native cylinder)                            |
 | =:role :queue=                  | =rectangle= with dashed =strokeStyle=                                                              |
@@ -489,6 +491,14 @@ For hand-drawn-feel diagrams that round-trip through Excalidraw or excalidraw.co
 | Edge =:style :dashed= / =:dotted= | maps to =strokeStyle: dashed= / =dotted=                                                           |
 
 The emitted JSON conforms to Excalidraw's =type: "excalidraw"= scene format (top-level ={type, version, source, elements, appState, files}=). Element ids are stable hashes of the drawl source ID so re-compilation preserves identity for users who have manually tweaked a scene and re-import.
+
+Boundaries (=:system= with children, and future =:container= boundaries) use Excalidraw =frame= elements rather than =groupIds=. A frame carries a visible labeled outline and owns its children via ~frameId~ on each child --- which matches the IR's boundary semantics. =groupIds= would encode only "these elements happen to be selected together," losing the named-boundary meaning that already lives in the IR.
+
+The emitter matches the existing backend signature: ~(drawl.emit.excalidraw/emit ir) → string~. Pure IR-in, JSON-string out, no IO, no external process. The dispatch in =drawl.compiler/emit= is the same =case= shape as the other backends. Internally the emitter is two passes: a layout pass walks the IR and returns a flat map ~{id → {:x :y :w :h}}~; an emit pass walks the IR again with that layout in hand and builds the Excalidraw element list. Both passes are pure data transforms.
+
+This means =:dot= and =:excalidraw= are independent backends with no shared layout step. =:dot= emits dot source and lets graphviz (or viz.js, downstream of the SPA) lay out and render; =:excalidraw= emits Excalidraw scene JSON with layout baked in and lets the Excalidraw app render. Same IR, two emitters, no internal coupling between them.
+
+A worked example of this transform --- =03-bank-containers.drawl= compiled to dot, fed through =dot -Tjson=, and hand-translated into an =.excalidraw= scene --- lives at =test/fixtures/excalidraw/= with accompanying =TRANSFORM.org= notes (units, Y-flip, binding rules, gotchas). Future emitter snapshot tests diff against that fixture.
 
 --------------
 
