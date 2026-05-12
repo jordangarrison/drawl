@@ -5,7 +5,8 @@
             [drawl.walker :as walker]
             [drawl.macros :as macros]
             [drawl.ir :as ir]
-            [drawl.emit.dot :as dot]))
+            [drawl.emit.dot :as dot]
+            [drawl.emit.excalidraw :as excalidraw]))
 
 (defn- form-head [f] (when (seq? f) (first f)))
 
@@ -44,7 +45,8 @@
   "IR -> output string for the given backend."
   [ir backend]
   (case backend
-    :dot (dot/emit ir)
+    :dot        (dot/emit ir)
+    :excalidraw (excalidraw/emit ir)
     (throw (ex-info (str "Unknown backend: " backend)
                     {:type :emit-error :backend backend}))))
 

@@ -71,16 +71,35 @@ header {
 header h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
 header .tag { font-size: 0.75rem; color: var(--fg-faint); }
 
-#cheatsheet-toggle, #theme-toggle {
+#cheatsheet-toggle, #theme-toggle, #download {
   font: inherit; font-weight: 600; font-size: 0.9rem;
   width: 1.6rem; height: 1.6rem; line-height: 1;
   border: 1px solid var(--border); background: var(--bg-pane); color: var(--fg);
   border-radius: 50%; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
 }
-#cheatsheet-toggle { margin-left: auto; }
+.backend-select { margin-left: auto; display: inline-flex; align-items: center; gap: 0.35rem; }
+.backend-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--fg-muted);
+}
+#backend {
+  font: inherit; font-size: 0.8rem;
+  background: var(--bg-pane); color: var(--fg);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.15rem 0.4rem; cursor: pointer;
+}
+#download { margin-left: 0.4rem; }
 #theme-toggle { margin-left: 0.4rem; }
-#cheatsheet-toggle:hover, #theme-toggle:hover { background: var(--bg-elevated); }
+#cheatsheet-toggle:hover, #theme-toggle:hover, #download:hover { background: var(--bg-elevated); }
+#out[hidden], #out-placeholder[hidden] { display: none; }
+.placeholder {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem; text-align: center; color: var(--fg-muted);
+  line-height: 1.5;
+}
+.placeholder strong { color: var(--fg); font-weight: 600; }
+.placeholder a { color: var(--accent, var(--fg)); }
 
 main {
   flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0;

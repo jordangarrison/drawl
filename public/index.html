@@ -20,6 +20,14 @@
   <header>
     <h1>drawl</h1>
     <span class="tag">live preview</span>
+    <label class="backend-select">
+      <span class="backend-label">backend</span>
+      <select id="backend" aria-label="Output backend">
+        <option value="dot" selected>dot (SVG)</option>
+        <option value="excalidraw">excalidraw (JSON)</option>
+      </select>
+    </label>
+    <button id="download" type="button" title="Download output" aria-label="Download">⬇</button>
     <button id="cheatsheet-toggle" type="button" title="Cheatsheet (Ctrl+/)">?</button>
     <button id="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">☼</button>
   </header>
@@ -31,10 +39,15 @@
     <section class="pane out">
       <h2>render</h2>
       <div id="out"></div>
+      <div id="out-placeholder" class="placeholder" hidden>
+        Excalidraw scenes don't render inline. Use
+        <strong>⬇ Download</strong> and drop the file onto
+        <a href="https://excalidraw.com" target="_blank" rel="noopener">excalidraw.com</a>.
+      </div>
       <pre id="err" class="err"></pre>
       <details class="raw">
-        <summary>dot source</summary>
-        <pre id="dot"></pre>
+        <summary id="raw-summary">dot source</summary>
+        <pre id="raw-output"></pre>
       </details>
     </section>
   </main>

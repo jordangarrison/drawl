@@ -1,8 +1,13 @@
 (ns app.core
-  "Slice 9c: CodeMirror 6 editor -> drawl.compiler/compile -> viz.js -> SVG.
-  Compile/render pipeline unchanged from slice 9a; the source pane is now
-  a CM6 view (see app.editor) and the cheatsheet overlay (keyboard +
-  drawl syntax) toggles via the ? button or F1."
+  "CodeMirror 6 editor -> drawl.compiler -> render pane.
+
+  Two backends:
+    :dot         -> compiled to dot source, rendered to SVG inline via viz.js
+    :excalidraw  -> compiled to Excalidraw scene JSON, shown raw + downloadable
+                    (no inline renderer; user opens the file in excalidraw.com)
+
+  The cheatsheet overlay (keyboard + drawl syntax) toggles via the ?
+  button or Ctrl+/."
   (:require [app.editor :as editor]
             [app.theme :as theme]
             [drawl.compiler :as drawl]
@@ -19,6 +24,16 @@
 
 (defonce ^:private viz-instance (.instance viz))
 
+(defonce ^:private state (atom {:src initial-doc :backend :dot}))
+
+(defn- backend-keyword [v]
+  (case v "excalidraw" :excalidraw :dot))
+
+(defn- file-info [backend]
+  (case backend
+    :excalidraw {:ext "excalidraw" :mime "application/json"  :summary "excalidraw json"}
+    :dot        {:ext "dot"        :mime "text/vnd.graphviz" :summary "dot source"}))
+
 (defn- show-error! [err-el msg]
   (set! (.-textContent err-el) msg))
 
@@ -29,14 +44,57 @@
       (.catch (fn [e]
                 (show-error! err-el (str "render: " (or (ex-message e) e)))))))
 
-(defn- render! [src out-el err-el dot-el]
-  (try
-    (let [dot-source (drawl/compile src :dot)]
-      (set! (.-textContent dot-el) dot-source)
-      (show-error! err-el "")
-      (render-svg-via-viz! out-el err-el dot-source))
-    (catch :default e
-      (show-error! err-el (or (ex-message e) (str e))))))
+(defn- render! [src backend]
+  (let [out-el  (by-id "out")
+        err-el  (by-id "err")
+        raw-el  (by-id "raw-output")
+        ph-el   (by-id "out-placeholder")
+        sum-el  (by-id "raw-summary")
+        {:keys [summary]} (file-info backend)]
+    (try
+      (let [output (drawl/compile src backend)]
+        (set! (.-textContent raw-el) output)
+        (set! (.-textContent sum-el) summary)
+        (show-error! err-el "")
+        (case backend
+          :dot        (do (set! (.-hidden ph-el)  true)
+                          (set! (.-hidden out-el) false)
+                          (render-svg-via-viz! out-el err-el output))
+          :excalidraw (do (.replaceChildren out-el)
+                          (set! (.-hidden out-el) true)
+                          (set! (.-hidden ph-el)  false))))
+      (catch :default e
+        (show-error! err-el (or (ex-message e) (str e)))))))
+
+(defn- run-current! []
+  (let [{:keys [src backend]} @state]
+    (render! src backend)))
+
+(defn- update-src! [src]
+  (swap! state assoc :src src)
+  (run-current!))
+
+(defn- update-backend! [backend]
+  (swap! state assoc :backend backend)
+  (run-current!))
+
+(defn- trigger-download! []
+  (let [{:keys [src backend]} @state
+        {:keys [ext mime]}    (file-info backend)
+        err-el                (by-id "err")]
+    (try
+      (let [content (drawl/compile src backend)
+            blob    (js/Blob. #js [content] #js {:type mime})
+            url     (.createObjectURL js/URL blob)
+            a       (.createElement js/document "a")]
+        (set! (.-href a) url)
+        (set! (.-download a) (str "diagram." ext))
+        (.appendChild (.-body js/document) a)
+        (.click a)
+        (.remove a)
+        (js/setTimeout #(.revokeObjectURL js/URL url) 1000))
+      (catch :default e
+        (show-error! err-el (or (ex-message e) (str e)))))))
 
 (defn- select-tab! [tab-id]
   (doseq [^js btn (array-seq (.querySelectorAll js/document "#cheatsheet .tab"))]
@@ -79,15 +137,16 @@
           (.catch (fn [e] (js/console.warn "sw register failed:" e)))))))
 
 (defn ^:export init []
-  (let [out-el (by-id "out")
-        err-el (by-id "err")
-        dot-el (by-id "dot")
-        run    #(render! % out-el err-el dot-el)
+  (let [backend-el  (by-id "backend")
+        download-el (by-id "download")
         {:keys [set-theme!]} (editor/mount (by-id "editor")
                                            initial-doc
-                                           run
+                                           update-src!
                                            (theme/current-active-mode))]
     (theme/init! {:on-change set-theme!})
-    (run initial-doc)
+    (.addEventListener backend-el "change"
+                       #(update-backend! (backend-keyword (.-value backend-el))))
+    (.addEventListener download-el "click" trigger-download!)
+    (run-current!)
     (wire-cheatsheet!)
     (register-service-worker!)))
