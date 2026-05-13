@@ -126,7 +126,20 @@
 (defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
 (defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))
 
-(defmethod walk-form '=> [form ctx]
+(defmethod walk-form '=>
+  ;; Chain with vector fan. Produces a vector of edges.
+  ;;
+  ;; Args: leading symbols and vectors form the chain (>= 2 positions).
+  ;; Anything after is the trailer: optional label string + kw/val attrs
+  ;; via split-header. Trailer's label/attrs apply to every edge in the
+  ;; chain; :wrap-attrs from ctx merges UNDER own-attrs (edge wins).
+  ;;
+  ;; A vector at any position is a parallel set; adjacent positions
+  ;; produce a full cross-product of edges (sources x targets).
+  ;;
+  ;; Self-loops and duplicate fan members are allowed (matches behavior
+  ;; of (-> a a) and the implicit-from self-loop rule).
+  [form ctx]
   (let [args (rest form)
         [chain trailer] (split-with #(or (symbol? %) (vector? %)) args)
         _ (when (< (count chain) 2)

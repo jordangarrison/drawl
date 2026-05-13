@@ -294,3 +294,25 @@
       (is (= 2 (count edges)))
       (is (every? #(= "REST"   (-> % :attrs :tech))  edges))
       (is (every? #(= :dashed  (-> % :attrs :style)) edges)))))
+
+(deftest chain-self-loop-allowed
+  (testing "(=> a a) produces a self-loop edge — consistent with (-> a a)"
+    (let [edges (chain-edges "(=> a a)")]
+      (is (= 1 (count edges)))
+      (is (= 'a (-> edges first :from)))
+      (is (= 'a (-> edges first :to))))))
+
+(deftest chain-rejects-trailing-children
+  (testing "(=> a b \"label\" :tech \"X\" (foo)) — extra form after trailer is rejected"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"trailing args must be label \+ attrs"
+          (c/parse "(diagram (system root (container a) (container b))
+                     (=> a b \"label\" :tech \"X\" (foo)))")))))
+
+(deftest chain-rejects-zero-args
+  (testing "(=>) with no args fails the >= 2 nodes check"
+    (is (thrown-with-msg?
+          clojure.lang.ExceptionInfo
+          #"chain requires at least 2 nodes"
+          (c/parse "(diagram (=>))")))))
