@@ -87,7 +87,14 @@
 (defmethod walk-form 'container [f c] (walk-element :container f c))
 (defmethod walk-form 'component [f c] (walk-element :component f c))
 
-(defn- walk-edge [bidirectional? form ctx]
+(defn- walk-edge
+  "Walk an edge form. Arity-disambiguated: 2 leading symbols = explicit
+  (from, to). 1 leading symbol + (:current-element ctx) = implicit-from
+  (from=:current-element, to=that symbol). Otherwise walk-error.
+
+  Edge attrs merge over ctx :wrap-attrs so edge attrs win on conflict
+  (the :wrap-attrs ctx key is set by `with-attrs` in Task 3)."
+  [bidirectional? form ctx]
   (let [args (rest form)
         [from to rest-args]
         (cond
@@ -98,7 +105,7 @@
           [(:current-element ctx) (first args) (rest args)]
 
           :else
-          (throw (ex-info "edge requires two endpoints at top level"
+          (throw (ex-info "edge needs two endpoints, or one endpoint inside an element body"
                           {:type :walk-error :form form})))
         [[desc _] own-attrs leftover] (split-header rest-args)]
     (when (seq leftover)
@@ -110,7 +117,8 @@
      :to             to
      :bidirectional? bidirectional?
      :description    desc
-     :attrs          (merge (:wrap-attrs ctx) own-attrs)}))
+     :attrs          (merge (:wrap-attrs ctx) own-attrs)  ; :wrap-attrs set by (with-attrs ...) — Task 3
+     }))
 
 (defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
 (defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))

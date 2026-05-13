@@ -199,6 +199,28 @@
         #"two endpoints"
         (c/parse "(diagram (system s) (-> s))"))))
 
+(deftest implicit-from-with-label-and-attrs
+  (testing "header parser still works for implicit-from form"
+    (let [edge (-> (c/parse "(diagram (system s
+                                        (container api \"API\"
+                                          (-> db \"reads\" :tech \"JDBC\"))
+                                        (container db \"DB\")))")
+                   :elements first :children first :edges first)]
+      (is (= 'api (:from edge)))
+      (is (= 'db  (:to edge)))
+      (is (= "reads" (:description edge)))
+      (is (= "JDBC" (-> edge :attrs :tech))))))
+
+(deftest implicit-from-self-loop
+  (testing "self-loop via implicit-from is allowed (matches explicit (-> a a))"
+    (let [edge (-> (c/parse "(diagram (system s
+                                        (container queue \"Queue\"
+                                          (-> queue \"retries\"))))")
+                   :elements first :children first :edges first)]
+      (is (= 'queue (:from edge)))
+      (is (= 'queue (:to edge)))
+      (is (= "retries" (:description edge))))))
+
 (deftest edge-merges-wrap-attrs-from-ctx
   (testing "walk-edge picks up :wrap-attrs from ctx; edge attrs win on conflict"
     (let [edge-a (walker/walk-form '(-> a b) {:wrap-attrs {:tech "gRPC"}})
