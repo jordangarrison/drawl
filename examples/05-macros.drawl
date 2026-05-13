@@ -2,13 +2,12 @@
   (person customer "Customer")
 
   (system store "Storefront"
-    (webapp web "Web App")
-    (rest-api api "Public API")
+    (webapp web "Web App" (-> api "renders via"))
+    (rest-api api "Public API"
+      (-> db "reads/writes" :tech "JDBC")
+      (<-> cache "session sync"))
     (postgres-db db "Postgres")
-    (redis-cache cache "Cache")
-    (-> web api "renders via")
-    (-> api db "reads/writes" :tech "JDBC")
-    (<-> api cache "session sync"))
+    (redis-cache cache "Cache"))
 
   (system stripe "Stripe" :external true)
 
