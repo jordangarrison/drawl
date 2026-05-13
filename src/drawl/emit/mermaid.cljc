@@ -101,21 +101,25 @@
                 (str ", " (q (:tech attrs)) ", " (q description) ")"))]
     (str head tail)))
 
-(defn- boundary-macro
-  "Boundary macro for a parent element. Only :system and :container
-  can be boundaries in C4-PlantUML."
-  [{:keys [kind]}]
-  (case kind
-    :system    "System_Boundary"
-    :container "Container_Boundary"))
+(defn- boundary-line
+  "Open-line for a parent element. Uses mermaid's generic
+  `Boundary(id, label, type)` form rather than `System_Boundary` /
+  `Container_Boundary` — the dedicated macros render the boundary
+  with an `[ENTERPRISE]` stereotype label regardless of kind (a
+  long-standing mermaid C4 quirk). Passing the type explicitly via
+  the generic form makes the stereotype say `[system]` /
+  `[container]`, which is what users actually mean."
+  [indent {:keys [id kind] :as el}]
+  (let [boundary-type (case kind :system "system" :container "container")]
+    (str indent "Boundary(" (name id) ", "
+         (q (title-of el)) ", " (q boundary-type) ") {")))
 
 (defn- element-lines
   "Lines for an element. Leaf -> one line. Parent -> open boundary,
   recurse children, close. Indent grows 2 spaces per nesting level."
-  [indent {:keys [id children] :as el}]
+  [indent {:keys [children] :as el}]
   (if (seq children)
-    (concat [(str indent (boundary-macro el)
-                  "(" (name id) ", " (q (title-of el)) ") {")]
+    (concat [(boundary-line indent el)]
             (mapcat #(element-lines (str indent "  ") %) children)
             [(str indent "}")])
     [(leaf-line indent el)]))

@@ -64,10 +64,11 @@
     (is (str/includes? out "System_Ext(mainframe, \"Mainframe\", \"\")"))))
 
 (deftest system-with-children-renders-boundary
-  (let [out (c/compile "(diagram (system bank \"Bank\" (container web \"Web\")))" :mermaid)]
-    (is (str/includes? out "System_Boundary(bank, \"Bank\") {"))
-    (is (str/includes? out "Container(web, \"Web\""))
-    (is (str/includes? out "}"))))
+  (testing "uses generic Boundary(id, label, \"system\") form; the dedicated System_Boundary macro mislabels as [ENTERPRISE]"
+    (let [out (c/compile "(diagram (system bank \"Bank\" (container web \"Web\")))" :mermaid)]
+      (is (str/includes? out "Boundary(bank, \"Bank\", \"system\") {"))
+      (is (str/includes? out "Container(web, \"Web\""))
+      (is (str/includes? out "}")))))
 
 (deftest nested-system-boundary
   (let [out (c/compile
@@ -75,8 +76,8 @@
                 (system outer \"Outer\"
                   (system inner \"Inner\"
                     (container c \"C\"))))" :mermaid)]
-    (is (str/includes? out "System_Boundary(outer, \"Outer\") {"))
-    (is (str/includes? out "System_Boundary(inner, \"Inner\") {"))))
+    (is (str/includes? out "Boundary(outer, \"Outer\", \"system\") {"))
+    (is (str/includes? out "Boundary(inner, \"Inner\", \"system\") {"))))
 
 ;; ── container ──────────────────────────────────────────────────────
 
@@ -105,7 +106,7 @@
   (let [out (c/compile
              "(diagram (system s (container api \"API\" (component sign-in \"Sign-in\"))))"
              :mermaid)]
-    (is (str/includes? out "Container_Boundary(api, \"API\") {"))
+    (is (str/includes? out "Boundary(api, \"API\", \"container\") {"))
     (is (str/includes? out "Component(sign-in, \"Sign-in\""))))
 
 (deftest container-external-not-flipped
