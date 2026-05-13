@@ -159,3 +159,51 @@
         #"defmacro requires a symbol name"
         (c/parse "(defmacro \"oops\" [x] (container x))
                   (diagram (system s))"))))
+
+;; --- Implicit-from on (-> ...) inside element body ----------------------
+
+(deftest implicit-from-inside-container
+  (testing "single symbol after -> uses parent element as from"
+    (let [ir   (c/parse "(diagram (system bank
+                                    (container api \"API\"
+                                      (-> db \"reads\"))
+                                    (container db \"DB\")))")
+          edge (-> ir :elements first :children first :edges first)]
+      (is (= 'api (:from edge)))
+      (is (= 'db  (:to edge)))
+      (is (= "reads" (:description edge))))))
+
+(deftest implicit-from-bidirectional
+  (let [ir   (c/parse "(diagram (system s
+                                  (container api \"API\"
+                                    (<-> peer))
+                                  (container peer \"Peer\")))")
+        edge (-> ir :elements first :children first :edges first)]
+    (is (true? (:bidirectional? edge)))
+    (is (= 'api  (:from edge)))
+    (is (= 'peer (:to edge)))))
+
+(deftest explicit-edge-inside-container-still-works
+  (testing "two leading symbols = explicit, even inside element body"
+    (let [ir   (c/parse "(diagram (system s
+                                    (container spa \"SPA\")
+                                    (container api \"API\"
+                                      (-> spa api \"delivers\"))))")
+          edge (-> ir :elements first :children second :edges first)]
+      (is (= 'spa (:from edge)))
+      (is (= 'api (:to edge))))))
+
+(deftest implicit-from-rejected-at-diagram-body
+  (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"two endpoints"
+        (c/parse "(diagram (system s) (-> s))"))))
+
+(deftest edge-merges-wrap-attrs-from-ctx
+  (testing "walk-edge picks up :wrap-attrs from ctx; edge attrs win on conflict"
+    (let [edge-a (walker/walk-form '(-> a b) {:wrap-attrs {:tech "gRPC"}})
+          edge-b (walker/walk-form '(-> a b :tech "REST")
+                                   {:wrap-attrs {:tech "gRPC" :style :dashed}})]
+      (is (= {:tech "gRPC"} (:attrs edge-a)))
+      (is (= {:tech "REST" :style :dashed} (:attrs edge-b))
+          "edge :tech wins, wrap :style passes through"))))

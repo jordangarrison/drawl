@@ -63,7 +63,8 @@
                                  (pr-str id))
                             {:type :walk-error :form form})))
         [[title description] attrs children] (split-header rest)
-        [child-els edges]                    (walk-children children ctx)]
+        child-ctx                            (assoc ctx :current-element id)
+        [child-els edges]                    (walk-children children child-ctx)]
     {:kind        kind
      :id          id
      :title       title
@@ -86,9 +87,20 @@
 (defmethod walk-form 'container [f c] (walk-element :container f c))
 (defmethod walk-form 'component [f c] (walk-element :component f c))
 
-(defn- walk-edge [bidirectional? form]
-  (let [[_ from to & rest]              form
-        [[desc _] attrs leftover]       (split-header rest)]
+(defn- walk-edge [bidirectional? form ctx]
+  (let [args (rest form)
+        [from to rest-args]
+        (cond
+          (and (symbol? (first args)) (symbol? (second args)))
+          [(first args) (second args) (drop 2 args)]
+
+          (and (symbol? (first args)) (:current-element ctx))
+          [(:current-element ctx) (first args) (rest args)]
+
+          :else
+          (throw (ex-info "edge requires two endpoints at top level"
+                          {:type :walk-error :form form})))
+        [[desc _] own-attrs leftover] (split-header rest-args)]
     (when (seq leftover)
       (throw (ex-info (str "edge does not accept children, got: "
                            (pr-str leftover))
@@ -98,7 +110,7 @@
      :to             to
      :bidirectional? bidirectional?
      :description    desc
-     :attrs          attrs}))
+     :attrs          (merge (:wrap-attrs ctx) own-attrs)}))
 
-(defmethod walk-form '->  [form _ctx] (walk-edge false form))
-(defmethod walk-form '<-> [form _ctx] (walk-edge true  form))
+(defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
+(defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))
