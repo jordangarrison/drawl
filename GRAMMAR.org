@@ -106,6 +106,8 @@ be introduced without breaking older diagrams.
 
 * Relationships
 
+** Two-symbol explicit form
+
 | Form                                | Direction       |
 |-------------------------------------+-----------------|
 | =(-> a b)=                          | a → b           |
@@ -115,6 +117,59 @@ be introduced without breaking older diagrams.
 
 Endpoints (~a~, ~b~) must resolve to declared element IDs. Unresolved
 endpoints are a hard error.
+
+** Implicit-=from= inside element bodies
+
+When =(-> ...)= or =(<-> ...)= appears inside an element's body
+(=person= / =system= / =container= / =component=), a single-symbol
+arity means "from this element":
+
+#+begin_src clojure
+(container api "API"
+  (-> db "reads")               ; from = api, implicit
+  (-> stripe "charges" :tech "REST")
+  (-> spa api "delivers"))      ; two symbols = explicit, still legal
+#+end_src
+
+Outside an element body, the single-symbol form is a hard error.
+
+Self-loops are allowed: =(-> a a)= and =(container a (-> a))= both
+produce =a → a=.
+
+** =(=> a b c …)= --- chain with vector fan
+
+Each adjacent pair in the chain produces an edge. A vector at any
+position is a parallel set; adjacent vectors yield the full
+cross-product. A trailing string + keyword/value pairs apply to every
+edge in the chain.
+
+#+begin_src clojure
+(=> a b c d)                              ; a→b, b→c, c→d
+(=> a [b c] d)                            ; a→b, a→c, b→d, c→d
+(=> [a b] [c d])                          ; 4 edges, cross-product
+(=> customer api "via HTTPS" :tech "HTTPS")
+#+end_src
+
+Chain must have at least two nodes; fan vectors must be non-empty and
+contain only symbols. Per-edge labels are not expressible --- use
+=(-> ...)= for those.
+
+** =(with-attrs {…} body…)= --- defaults supplier
+
+Wraps any body. Defaults flow into every edge constructed in the
+subtree, no matter how deeply nested (across element boundaries, into
+=->=, =<->=, =>=, or macro expansions). Edge attrs win on conflict;
+inner =with-attrs= overrides outer.
+
+#+begin_src clojure
+(with-attrs {:tech "gRPC"}
+  (-> api auth)
+  (-> api billing)
+  (=> customer [web mobile] api))
+#+end_src
+
+First argument must be a map literal; otherwise the form is rejected
+at walk time. Empty body is allowed (no edges produced).
 
 * Built-in macros
 

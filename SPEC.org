@@ -133,6 +133,16 @@ A directed relationship.
 
 Convenience for two-way relationships. Renders as the backend's bidirectional edge primitive (=Rel_Bi= in mermaid C4, =dir=both= in dot).
 
+*** Edge-surface extensions (v0.3)
+
+Three additive mechanisms layer onto =(->)= / =(<->)= without changing the IR. See [[file:docs/specs/2026-05-13-edge-syntax-design.md][docs/specs/2026-05-13-edge-syntax-design.md]] for the full design discussion; the user-facing reference lives in [[file:GRAMMAR.org][GRAMMAR.org]] §Relationships.
+
+- *Implicit-=from= on =(->)= and =(<->)= inside element bodies.* When an edge form appears as a child of =person= / =system= / =container= / =component=, a single-symbol arity (=(-> b)=) means "from the enclosing element to =b=". The two-symbol arity (=(-> a b)=) is unchanged. Outside an element body, single-symbol is a walk error.
+- *=(=> a b c …)= --- chain with vector fan.* New head. Each adjacent pair of chain positions produces an edge; a vector at any position contributes a parallel set, and adjacent vectors take the full cross-product. Trailing string + kw/val pairs apply to every edge.
+- *=(with-attrs {…} body…)= --- defaults supplier.* Wraps any body. The supplied map merges UNDER each edge's own attrs (edge attrs win) for every edge produced anywhere in the subtree, including across element boundaries and macro expansions. Nestable; inner overrides outer.
+
+These desugar entirely in the walker; emitters and =drawl.ir/validate= are untouched.
+
 ** 2.4 Attribute Reference
 | Attribute    | Applies to                 | Type    | Notes                                        |
 |--------------+----------------------------+---------+----------------------------------------------|
@@ -384,6 +394,15 @@ the head is not in the registry, the walker throws.
 =drawl.compiler/parse= seeds the registry with =drawl.macros/builtins=, then
 folds in any top-level =(defmacro ...)= forms (last-write wins, with a
 warning).
+
+*Walker contract additions (edge-surface v0.3).* Two ctx keys carry
+edge-surface state through the walk; one structural rule lets a single
+form produce many IR nodes. Full rationale in
+[[file:docs/specs/2026-05-13-edge-syntax-design.md][docs/specs/2026-05-13-edge-syntax-design.md]].
+
+- =:current-element= — symbol id of the nearest enclosing element. =walk-element= assocs this into ctx before descending into children; =walk-edge= reads it for the implicit-=from= path.
+- =:wrap-attrs= — merged map of attribute defaults from enclosing =with-attrs= forms. =walk-with-attrs= updates it (inner overrides outer); every edge-constructing path (=walk-edge=, =walk-chain=) merges it UNDER the edge's own attrs so edge attrs win on conflict.
+- =walk-children= flattens vector returns. =walk-form= may now return either a single IR node or a vector of nodes (=(=> ...)= yields N edges; =(with-attrs ...)= yields M children). =walk-children= mapcat-splices vector returns into its result list before partitioning into =:elements= and =:relationships=.
 
 ** 4.4 Reader Compatibility
 =clojure.edn/read-string= (JVM) and =cljs.reader/read-string= (browser) are nearly but not bug-for-bug identical. Specifically watch for tagged literals and namespaced keywords. The portability test suite (§7.3) loads the same fixture file through both runtimes and asserts identical IR output.
