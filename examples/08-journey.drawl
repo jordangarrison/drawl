@@ -1,0 +1,20 @@
+(diagram "Order journey"
+  (person customer "Customer")
+
+  (system platform "Order Platform"
+    (container web    "Web")
+    (container mobile "Mobile")
+    (container api    "API"
+      (with-attrs {:tech "gRPC"}
+        (-> auth     "verify")
+        (-> catalog  "lookup")
+        (-> payment  "charge")
+        (-> shipping "ship")))
+    (container auth     "Auth Svc")
+    (container catalog  "Catalog Svc")
+    (container payment  "Payment Svc")
+    (container shipping "Shipping Svc")
+    (container db       "Postgres" :role :database)
+    (container cache    "Redis"    :role :database))
+
+  (=> customer [web mobile] api [db cache] "via HTTPS" :tech "HTTPS"))

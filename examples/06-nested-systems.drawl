@@ -3,15 +3,12 @@
 
   (system platform "Acme Platform"
     (system storefront "Storefront"
-      (webapp web "Web")
-      (rest-api api "API")
-      (postgres-db db "Postgres")
-      (-> web api "calls")
-      (-> api db "JDBC"))
+      (webapp web "Web" (-> api "calls"))
+      (rest-api api "API" (-> db "JDBC"))
+      (postgres-db db "Postgres"))
     (system fulfilment "Fulfilment"
-      (rest-api orders "Orders")
-      (postgres-db orders-db "Orders DB")
-      (-> orders orders-db "JDBC"))
+      (rest-api orders "Orders" (-> orders-db "JDBC"))
+      (postgres-db orders-db "Orders DB"))
     (-> api orders "places order"))
 
   (system stripe "Stripe" :external true)

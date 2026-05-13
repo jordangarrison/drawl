@@ -1,16 +1,11 @@
 (diagram "Internet Banking — Containers"
   (person customer "Banking Customer")
-
   (system bank "Internet Banking System"
-    (container webapp "Web App")
-    (container spa "SPA")
-    (container api "API")
-    (container db "Database")
-    (-> spa api "API calls")
-    (-> api db "Reads/writes"))
-
+    (container webapp "Web App" (-> spa "Delivers SPA"))
+    (container spa    "SPA"     (-> api "API calls"))
+    (container api    "API"
+      (-> db "Reads/writes")
+      (-> mainframe "Calls"))
+    (container db     "Database"))
   (system mainframe "Mainframe Banking")
-
-  (-> customer webapp "Visits bigbank.com")
-  (-> webapp spa "Delivers SPA")
-  (-> api mainframe "Calls"))
+  (-> customer webapp "Visits bigbank.com"))
