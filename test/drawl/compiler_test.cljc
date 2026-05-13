@@ -34,7 +34,7 @@
    (deftest edge-syntax-fixture
      (testing "implicit-from + => + with-attrs compose end-to-end"
        (let [src      (slurp "test/fixtures/edges/01-mixed.drawl")
-             expected (clojure.edn/read-string
+             expected (edn/read-string
                        (slurp "test/fixtures/edges/01-mixed.edn"))
              actual   (c/parse src)]
          (is (= (:title expected) (:title actual)))
