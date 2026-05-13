@@ -316,3 +316,64 @@
           clojure.lang.ExceptionInfo
           #"chain requires at least 2 nodes"
           (c/parse "(diagram (=>))")))))
+
+;; --- with-attrs defaults supplier ---------------------------------------
+
+(deftest with-attrs-flat-wraps-edges
+  (let [edges (-> (c/parse "(diagram (system root (container a) (container b))
+                              (with-attrs {:tech \"gRPC\"} (-> a b)))")
+                  :relationships)]
+    (is (= 1 (count edges)))
+    (is (= "gRPC" (-> edges first :attrs :tech)))))
+
+(deftest with-attrs-edge-overrides-wrap
+  (let [edges (-> (c/parse "(diagram (system root (container a) (container b))
+                              (with-attrs {:tech \"gRPC\"}
+                                (-> a b :tech \"REST\")))")
+                  :relationships)]
+    (is (= "REST" (-> edges first :attrs :tech))
+        "edge :tech wins over wrap :tech")))
+
+(deftest with-attrs-nested-inner-wins
+  (let [edges (-> (c/parse "(diagram (system root (container a) (container b))
+                              (with-attrs {:tech \"gRPC\" :style :solid}
+                                (with-attrs {:tech \"REST\"}
+                                  (-> a b))))")
+                  :relationships)]
+    (is (= "REST"  (-> edges first :attrs :tech)))
+    (is (= :solid  (-> edges first :attrs :style))
+        "outer :style passes through, inner :tech overrides")))
+
+(deftest with-attrs-flows-through-element
+  (testing "wrap-attrs reach edges inside an element nested in with-attrs body"
+    (let [edges (-> (c/parse "(diagram
+                                (with-attrs {:tech \"gRPC\"}
+                                  (system root
+                                    (container api \"API\"
+                                      (-> db \"reads\"))
+                                    (container db \"DB\")))
+                                )")
+                    :elements first :children first :edges)]
+      (is (= 1 (count edges)))
+      (is (= 'api (:from (first edges))))
+      (is (= "gRPC" (-> edges first :attrs :tech))))))
+
+(deftest with-attrs-flows-into-chain
+  (let [edges (-> (c/parse "(diagram (system root (container a) (container b) (container c))
+                              (with-attrs {:tech \"gRPC\"}
+                                (=> a b c)))")
+                  :relationships)]
+    (is (= 2 (count edges)))
+    (is (every? #(= "gRPC" (-> % :attrs :tech)) edges))))
+
+(deftest with-attrs-rejects-non-map-first-arg
+  (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"with-attrs requires a map"
+        (c/parse "(diagram (system root (container a) (container b))
+                   (with-attrs :tech \"gRPC\" (-> a b)))"))))
+
+(deftest with-attrs-empty-body-no-op
+  (let [ir (c/parse "(diagram (system root (container a))
+                              (with-attrs {:tech \"gRPC\"}))")]
+    (is (= [] (:relationships ir)))))

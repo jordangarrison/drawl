@@ -126,6 +126,26 @@
 (defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
 (defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))
 
+(defmethod walk-form 'with-attrs
+  ;; Defaults supplier. Merges its map into ctx :wrap-attrs, then walks
+  ;; body forms. Every edge constructed in the subtree (via ->, <->, =>,
+  ;; or nested with-attrs) merges those defaults UNDER its own attrs, so
+  ;; edge-defined attrs win on conflict.
+  ;;
+  ;; Transparent: does not restrict what body may contain; any form legal
+  ;; in the enclosing scope (edges, elements, nested with-attrs, macro
+  ;; expansions) is legal here. Inner with-attrs overrides outer on key
+  ;; conflict.
+  [form ctx]
+  (let [[_ amap & body] form
+        _ (when-not (map? amap)
+            (throw (ex-info "with-attrs requires a map of defaults"
+                            {:type :walk-error :form form})))
+        child-ctx (update ctx :wrap-attrs #(merge % amap))
+        walked    (mapv #(walk-form % child-ctx) body)]
+    (vec
+     (mapcat (fn [r] (if (vector? r) r [r])) walked))))
+
 (defmethod walk-form '=>
   ;; Chain with vector fan. Produces a vector of edges.
   ;;
