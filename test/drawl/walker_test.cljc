@@ -155,7 +155,7 @@
 
 (deftest defmacro-malformed-throws
   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
+        #?(:clj clojure.lang.ExceptionInfo :cljs :default)
         #"defmacro requires a symbol name"
         (c/parse "(defmacro \"oops\" [x] (container x))
                   (diagram (system s))"))))
@@ -195,7 +195,7 @@
 
 (deftest implicit-from-rejected-at-diagram-body
   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
+        #?(:clj clojure.lang.ExceptionInfo :cljs :default)
         #"two endpoints"
         (c/parse "(diagram (system s) (-> s))"))))
 
@@ -276,13 +276,13 @@
 
 (deftest chain-rejects-single-node
   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
+        #?(:clj clojure.lang.ExceptionInfo :cljs :default)
         #"chain requires at least 2 nodes"
         (c/parse "(diagram (container a) (=> a))"))))
 
 (deftest chain-rejects-empty-fan-vector
   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
+        #?(:clj clojure.lang.ExceptionInfo :cljs :default)
         #"chain fan vector cannot be empty"
         (c/parse "(diagram (container a) (container b) (=> a [] b))"))))
 
@@ -305,7 +305,7 @@
 (deftest chain-rejects-trailing-children
   (testing "(=> a b \"label\" :tech \"X\" (foo)) — extra form after trailer is rejected"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
+          #?(:clj clojure.lang.ExceptionInfo :cljs :default)
           #"trailing args must be label \+ attrs"
           (c/parse "(diagram (system root (container a) (container b))
                      (=> a b \"label\" :tech \"X\" (foo)))")))))
@@ -313,7 +313,7 @@
 (deftest chain-rejects-zero-args
   (testing "(=>) with no args fails the >= 2 nodes check"
     (is (thrown-with-msg?
-          clojure.lang.ExceptionInfo
+          #?(:clj clojure.lang.ExceptionInfo :cljs :default)
           #"chain requires at least 2 nodes"
           (c/parse "(diagram (=>))")))))
 
@@ -368,7 +368,7 @@
 
 (deftest with-attrs-rejects-non-map-first-arg
   (is (thrown-with-msg?
-        clojure.lang.ExceptionInfo
+        #?(:clj clojure.lang.ExceptionInfo :cljs :default)
         #"with-attrs requires a map"
         (c/parse "(diagram (system root (container a) (container b))
                    (with-attrs :tech \"gRPC\" (-> a b)))"))))
