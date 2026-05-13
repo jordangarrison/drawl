@@ -45,11 +45,14 @@
 
 (defn- walk-children
   "Walk each child form and split the results into [elements edges].
-  Used by every element-bearing head (diagram + person/system/container/component)."
+  A child walker may return a single node or a vector of nodes (e.g.
+  =>, with-attrs); vectors are spliced. Used by every element-bearing
+  head (diagram + person/system/container/component)."
   [children ctx]
-  (let [walked (mapv #(walk-form % ctx) children)
+  (let [walked    (mapv #(walk-form % ctx) children)
+        flattened (mapcat (fn [r] (if (vector? r) r [r])) walked)
         {elements true edges false}
-        (group-by #(not= :edge (:kind %)) walked)]
+        (group-by #(not= :edge (:kind %)) flattened)]
     [(vec elements) (vec edges)]))
 
 (defn- walk-element
@@ -122,3 +125,36 @@
 
 (defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
 (defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))
+
+(defmethod walk-form '=> [form ctx]
+  (let [args (rest form)
+        [chain trailer] (split-with #(or (symbol? %) (vector? %)) args)
+        _ (when (< (count chain) 2)
+            (throw (ex-info "chain requires at least 2 nodes"
+                            {:type :walk-error :form form})))
+        _ (doseq [n chain]
+            (when (and (vector? n) (empty? n))
+              (throw (ex-info "chain fan vector cannot be empty"
+                              {:type :walk-error :form form})))
+            (when (vector? n)
+              (doseq [item n]
+                (when-not (symbol? item)
+                  (throw (ex-info "chain fan vector must contain symbols"
+                                  {:type :walk-error :form form
+                                   :offender item}))))))
+        [[desc _] own-attrs leftover] (split-header trailer)
+        _ (when (seq leftover)
+            (throw (ex-info "=> trailing args must be label + attrs"
+                            {:type :walk-error :form form :leftover leftover})))
+        attrs   (merge (:wrap-attrs ctx) own-attrs)
+        sources (fn [n] (if (vector? n) n [n]))]
+    (vec
+     (for [[a b] (partition 2 1 chain)
+           from  (sources a)
+           to    (sources b)]
+       {:kind           :edge
+        :from           from
+        :to             to
+        :bidirectional? false
+        :description    desc
+        :attrs          attrs}))))
