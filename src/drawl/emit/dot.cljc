@@ -86,8 +86,12 @@
 
 (defn- first-leaf-id
   "Walk down the first-child chain to the first leaf and return its id.
-  Used as the dot-side anchor when an edge endpoint is itself a cluster
-  (graphviz requires real interior nodes for ltail/lhead edges)."
+
+  Used as the dot-side anchor when an edge endpoint is itself a cluster.
+  Anchor selection follows source declaration order — put the
+  representative child first if you care which interior node gets the
+  visible end of the arrow. This is a deliberate contract: users control
+  anchor placement by ordering their children, not by sorting."
   [{:keys [id children]}]
   (if (seq children)
     (recur (first children))

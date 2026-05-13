@@ -232,3 +232,54 @@
                :dot)]
       (is (str/includes? out "\"deepest\" -> \"sibling\"")
           "anchor is the first leaf at the bottom of outer's first-child chain"))))
+
+(deftest cluster-anchor-follows-declaration-order
+  (testing "reordering children changes which leaf is the anchor (intentional)"
+    (let [a-first (c/compile
+                   "(diagram
+                      (system s
+                        (container parent
+                          (component leaf-a)
+                          (component leaf-b))
+                        (container sibling))
+                      (-> parent sibling))" :dot)
+          b-first (c/compile
+                   "(diagram
+                      (system s
+                        (container parent
+                          (component leaf-b)
+                          (component leaf-a))
+                        (container sibling))
+                      (-> parent sibling))" :dot)]
+      (is (re-find #"\"leaf-a\" -> \"sibling\"" a-first))
+      (is (re-find #"\"leaf-b\" -> \"sibling\"" b-first))
+      (is (not= a-first b-first)
+          "declaration order determines anchor — this is the contract"))))
+
+;; --- self-loop and parent→own-child cluster edges -----------------------
+
+(deftest cluster-self-loop-uses-anchor-and-both-ends
+  (testing "(-> parent) inside (container parent) — self-loop on a cluster"
+    (let [out (c/compile
+               "(diagram
+                  (system s
+                    (container parent \"Parent\"
+                      (component child)
+                      (-> parent \"retries\"))))" :dot)]
+      ;; from-anchor = child (first leaf), to-anchor = child (same cluster),
+      ;; ltail + lhead both point at cluster_parent
+      (is (re-find #"\"child\" -> \"child\" \[[^\]]*ltail=\"cluster_parent\"[^\]]*lhead=\"cluster_parent\""
+                   out)))))
+
+(deftest edge-from-parent-to-own-child-uses-ltail
+  (testing "(-> child) from inside parent — implicit-from puts edge parent->child"
+    (let [out (c/compile
+               "(diagram
+                  (system s
+                    (container parent
+                      (component child)
+                      (-> child))))" :dot)]
+      ;; from-anchor (parent) = child (first leaf), to = child (leaf, no lhead)
+      ;; Result: "child" -> "child" with ltail=cluster_parent
+      (is (re-find #"\"child\" -> \"child\" \[[^\]]*ltail=\"cluster_parent\""
+                   out)))))

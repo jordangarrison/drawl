@@ -30,25 +30,47 @@
                  out (c/compile src :dot)]
              (is (str/starts-with? out "digraph G {"))))))))
 
-#?(:clj
-   (deftest edge-syntax-fixture
-     (testing "implicit-from + => + with-attrs compose end-to-end"
-       (let [src      (slurp "test/fixtures/edges/01-mixed.drawl")
-             expected (edn/read-string
-                       (slurp "test/fixtures/edges/01-mixed.edn"))
-             actual   (c/parse src)]
-         (is (= (:title expected) (:title actual)))
-         (is (= (:level expected) (:level actual)))
-         (is (= (:relationships expected)
-                (mapv #(select-keys % [:kind :from :to :bidirectional?
-                                       :description :attrs])
-                      (:relationships actual))))
-         (testing "api container has 2 inner edges with :tech gRPC"
-           (let [api (->> actual :elements
-                          (filter #(= 'shop (:id %)))
-                          first :children
-                          (filter #(= 'api (:id %)))
-                          first)]
-             (is (= 2 (count (:edges api))))
-             (is (every? #(= 'api (:from %)) (:edges api)))
-             (is (every? #(= "gRPC" (-> % :attrs :tech)) (:edges api)))))))))
+(def ^:private edge-syntax-fixture-src
+  "(diagram \"Edge syntax fixture\"
+    (person customer \"Customer\")
+    (system shop \"Shop\"
+      (container web \"Web\")
+      (container mobile \"Mobile\")
+      (container api \"API\"
+        (with-attrs {:tech \"gRPC\"}
+          (-> auth \"verify\")
+          (-> catalog \"lookup\")))
+      (container auth \"Auth\")
+      (container catalog \"Catalog\")
+      (container db \"DB\" :role :database))
+    (=> customer [web mobile] api db \"via HTTPS\" :tech \"HTTPS\"))")
+
+(def ^:private edge-syntax-fixture-expected
+  "{:title         \"Edge syntax fixture\"
+    :level         :container
+    :relationships
+    [{:kind :edge :from customer :to web    :bidirectional? false :description \"via HTTPS\" :attrs {:tech \"HTTPS\"}}
+     {:kind :edge :from customer :to mobile :bidirectional? false :description \"via HTTPS\" :attrs {:tech \"HTTPS\"}}
+     {:kind :edge :from web      :to api    :bidirectional? false :description \"via HTTPS\" :attrs {:tech \"HTTPS\"}}
+     {:kind :edge :from mobile   :to api    :bidirectional? false :description \"via HTTPS\" :attrs {:tech \"HTTPS\"}}
+     {:kind :edge :from api      :to db     :bidirectional? false :description \"via HTTPS\" :attrs {:tech \"HTTPS\"}}]}")
+
+(deftest edge-syntax-fixture
+  (testing "implicit-from + => + with-attrs compose end-to-end (CLJS-portable)"
+    (let [expected (edn/read-string edge-syntax-fixture-expected)
+          actual   (c/parse edge-syntax-fixture-src)]
+      (is (= (:title expected) (:title actual)))
+      (is (= (:level expected) (:level actual)))
+      (is (= (:relationships expected)
+             (mapv #(select-keys % [:kind :from :to :bidirectional?
+                                    :description :attrs])
+                   (:relationships actual))))
+      (testing "api container has 2 inner edges with :tech gRPC"
+        (let [api (->> actual :elements
+                       (filter #(= 'shop (:id %)))
+                       first :children
+                       (filter #(= 'api (:id %)))
+                       first)]
+          (is (= 2 (count (:edges api))))
+          (is (every? #(= 'api (:from %)) (:edges api)))
+          (is (every? #(= "gRPC" (-> % :attrs :tech)) (:edges api))))))))
