@@ -3,7 +3,7 @@
                   :push-state/handler shadow.http.push-state/handle}}
  :builds
  {:app {:target            :browser
-        :compiler-options  {:output-feature-set :es8}
+        :compiler-options  {:output-feature-set :es2020}
         :modules           {:main {:init-fn app.core/init}}
         :output-dir        "public/js"
         :asset-path        "/js"

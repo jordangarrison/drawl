@@ -144,11 +144,15 @@ Three additive mechanisms layer onto =(->)= / =(<->)= without changing the IR. S
 These desugar entirely in the walker; emitters and =drawl.ir/validate= are untouched.
 
 Cluster-edge rendering (=compound=true= + =ltail=/=lhead=) is a
-graphviz/dot concern. The mermaid C4 backend treats element
-containers as =System_Boundary= and routes edges visually without an
-equivalent of =ltail=/=lhead=; the mermaid emitter (planned for v0.2)
-emits plain element-to-element edges and lets mermaid handle
-boundary clipping.
+graphviz/dot concern. Mermaid C4 has no equivalent of
+=ltail=/=lhead= /and/ rejects edges where an endpoint is itself a
+=System_Boundary= or =Container_Boundary= (the layout pass throws
+=Cannot read properties of undefined (reading 'x')=). The mermaid
+emitter mirrors dot's "first leaf in declaration order" anchor
+contract: when an edge endpoint is a boundary, the emitter rewrites
+it to the first leaf descendant. The boundary itself is not
+highlighted visually — the edge just attaches to the chosen interior
+leaf — but the diagram renders.
 
 ** 2.4 Attribute Reference
 | Attribute    | Applies to                 | Type    | Notes                                        |
@@ -552,10 +556,10 @@ The same =.cljc= fixture should produce identical IR when run through Clojure (J
 - Built-in shorthand macros: =webapp=, =postgres-db=, =redis-cache=, =rest-api=.
 
 ** v0.2 --- C4 mapping
-- Add =person=, =container= element types to walker.
-- Implement mermaid C4 emitter.
-- Backend toggle in browser UI.
-- Level inference and =at-level= filtering.
+- Add =person=, =container= element types to walker. *(done)*
+- Implement mermaid C4 emitter. *(done)*
+- Backend toggle in browser UI. *(done)*
+- Level inference and =at-level= filtering. *(done)*
 
 ** v0.3 --- CLI via Babashka
 - =cli/main.clj= with =compile=, =lint=, =watch= subcommands.

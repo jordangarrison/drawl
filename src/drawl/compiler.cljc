@@ -6,7 +6,8 @@
             [drawl.macros :as macros]
             [drawl.ir :as ir]
             [drawl.emit.dot :as dot]
-            [drawl.emit.excalidraw :as excalidraw]))
+            [drawl.emit.excalidraw :as excalidraw]
+            [drawl.emit.mermaid :as mermaid]))
 
 (defn- form-head [f] (when (seq? f) (first f)))
 
@@ -46,6 +47,7 @@
   [ir backend]
   (case backend
     :dot        (dot/emit ir)
+    :mermaid    (mermaid/emit ir)
     :excalidraw (excalidraw/emit ir)
     (throw (ex-info (str "Unknown backend: " backend)
                     {:type :emit-error :backend backend}))))

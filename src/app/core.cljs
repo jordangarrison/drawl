@@ -1,14 +1,16 @@
 (ns app.core
   "CodeMirror 6 editor -> drawl.compiler -> render pane.
 
-  Two backends:
+  Three backends:
     :dot         -> compiled to dot source, rendered to SVG inline via viz.js
+    :mermaid     -> compiled to mermaid C4 source, rendered to SVG inline via mermaid.js
     :excalidraw  -> compiled to Excalidraw scene JSON, shown raw + downloadable
                     (no inline renderer; user opens the file in excalidraw.com)
 
   The cheatsheet overlay (keyboard + drawl syntax) toggles via the ?
   button or Ctrl+/."
   (:require [app.editor :as editor]
+            [app.mermaid :as mermaid]
             [app.theme :as theme]
             [drawl.compiler :as drawl]
             ["@viz-js/viz" :as viz]))
@@ -27,11 +29,15 @@
 (defonce ^:private state (atom {:src initial-doc :backend :dot}))
 
 (defn- backend-keyword [v]
-  (case v "excalidraw" :excalidraw :dot))
+  (case v
+    "excalidraw" :excalidraw
+    "mermaid"    :mermaid
+    :dot))
 
 (defn- file-info [backend]
   (case backend
     :excalidraw {:ext "excalidraw" :mime "application/json"  :summary "excalidraw json"}
+    :mermaid    {:ext "mmd"        :mime "text/vnd.mermaid"  :summary "mermaid source"}
     :dot        {:ext "dot"        :mime "text/vnd.graphviz" :summary "dot source"}))
 
 (defn- show-error! [err-el msg]
@@ -41,6 +47,12 @@
   (-> viz-instance
       (.then (fn [^js v]
                (.replaceChildren out-el (.renderSVGElement v dot-source))))
+      (.catch (fn [e]
+                (show-error! err-el (str "render: " (or (ex-message e) e)))))))
+
+(defn- render-svg-via-mermaid! [out-el err-el mmd-source]
+  (-> (mermaid/render mmd-source)
+      (.then (fn [svg] (.replaceChildren out-el svg)))
       (.catch (fn [e]
                 (show-error! err-el (str "render: " (or (ex-message e) e)))))))
 
@@ -60,6 +72,9 @@
           :dot        (do (set! (.-hidden ph-el)  true)
                           (set! (.-hidden out-el) false)
                           (render-svg-via-viz! out-el err-el output))
+          :mermaid    (do (set! (.-hidden ph-el)  true)
+                          (set! (.-hidden out-el) false)
+                          (render-svg-via-mermaid! out-el err-el output))
           :excalidraw (do (.replaceChildren out-el)
                           (set! (.-hidden out-el) true)
                           (set! (.-hidden ph-el)  false))))

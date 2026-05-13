@@ -253,8 +253,14 @@ See SPEC.org §6 for the full mapping. Quick highlights:
 - *graphviz dot* — =:role :database= → =shape=cylinder=. Boundaries
   become =subgraph cluster_N=. =:style= passes through verbatim.
 - *mermaid C4* — header per level (=C4Context= / =C4Container= /
-  =C4Component=). =:external= flips =Foo= → =Foo_Ext=. Systems with
-  children become =System_Boundary=.
+  =C4Component=). =:external= flips =Foo= → =Foo_Ext=. Systems and
+  containers with children become =System_Boundary= /
+  =Container_Boundary=. =:role :database= → =*Db= variant;
+  =:role :queue= → =*Queue=. Edges where an endpoint is a boundary
+  are rewritten to the boundary's first leaf descendant in
+  declaration order (mermaid C4 refuses boundary endpoints
+  directly). Edge =:style= and =:role= on Person/System are silently
+  ignored — no native equivalent.
 
 * Errors
 

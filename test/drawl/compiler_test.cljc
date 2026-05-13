@@ -21,14 +21,16 @@
 
 #?(:clj
    (deftest examples-compile
-     (testing "Every fixture in examples/ compiles to dot."
+     (testing "Every fixture in examples/ compiles to dot and mermaid."
        (doseq [^File f (->> (file-seq (File. "examples"))
                             (filter #(str/ends-with? (.getName ^File %) ".drawl"))
                             sort)]
          (testing (.getName f)
-           (let [src (slurp f)
-                 out (c/compile src :dot)]
-             (is (str/starts-with? out "digraph G {"))))))))
+           (let [src      (slurp f)
+                 dot-out  (c/compile src :dot)
+                 mmd-out  (c/compile src :mermaid)]
+             (is (str/starts-with? dot-out "digraph G {"))
+             (is (re-find #"^C4(Context|Container|Component)" mmd-out))))))))
 
 (def ^:private edge-syntax-fixture-src
   "(diagram \"Edge syntax fixture\"
