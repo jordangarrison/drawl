@@ -29,7 +29,13 @@
       [(into strs (repeat (- 2 (count strs)) nil)) attrs fs])))
 
 (defmulti walk-form
-  "Dispatch on form head symbol. Returns an IR fragment."
+  "Dispatch on form head symbol. Returns either:
+    - a single IR node (element or edge map), or
+    - a vector of IR nodes (used by =>, with-attrs — spliced by callers
+      via splice-walked).
+
+  Any defmethod returning a vector signals to callers that the result is
+  a splice payload, not a structural value."
   (fn [form _ctx]
     (cond
       (not (seq? form))
@@ -45,9 +51,10 @@
 
 (defn- splice-walked
   "Flatten walk-form results: a vector return splices its members, a single
-  node passes through. Used by walk-children and with-attrs."
+  node passes through. Returns a vector (eager) so equality is stable
+  across JVM/CLJS."
   [walked]
-  (mapcat (fn [r] (if (vector? r) r [r])) walked))
+  (vec (mapcat (fn [r] (if (vector? r) r [r])) walked)))
 
 (defn- walk-children
   "Walk each child form and split the results into [elements edges].
@@ -132,16 +139,17 @@
 (defmethod walk-form '->  [form ctx] (walk-edge false form ctx))
 (defmethod walk-form '<-> [form ctx] (walk-edge true  form ctx))
 
-(defmethod walk-form 'with-attrs
-  ;; Defaults supplier. Merges its map into ctx :wrap-attrs, then walks
-  ;; body forms. Every edge constructed in the subtree (via ->, <->, =>,
-  ;; or nested with-attrs) merges those defaults UNDER its own attrs, so
-  ;; edge-defined attrs win on conflict.
-  ;;
-  ;; Transparent: does not restrict what body may contain; any form legal
-  ;; in the enclosing scope (edges, elements, nested with-attrs, macro
-  ;; expansions) is legal here. Inner with-attrs overrides outer on key
-  ;; conflict.
+(defn- walk-with-attrs
+  "Defaults supplier. Merges its map into ctx :wrap-attrs, then walks
+  body forms. Every edge constructed in the subtree (via ->, <->, =>,
+  or nested with-attrs) merges those defaults UNDER its own attrs, so
+  edge-defined attrs win on conflict.
+
+  Transparent: does not restrict what body may contain; any form legal
+  in the enclosing scope (edges, elements, nested with-attrs, macro
+  expansions) is legal here. Inner with-attrs overrides outer on key
+  conflict. Returns a vector of walked body results, for splicing by
+  the caller."
   [form ctx]
   (let [[_ amap & body] form
         _ (when-not (map? amap)
@@ -149,21 +157,23 @@
                             {:type :walk-error :form form})))
         child-ctx (update ctx :wrap-attrs #(merge % amap))
         walked    (mapv #(walk-form % child-ctx) body)]
-    (vec (splice-walked walked))))
+    (splice-walked walked)))
 
-(defmethod walk-form '=>
-  ;; Chain with vector fan. Produces a vector of edges.
-  ;;
-  ;; Args: leading symbols and vectors form the chain (>= 2 positions).
-  ;; Anything after is the trailer: optional label string + kw/val attrs
-  ;; via split-header. Trailer's label/attrs apply to every edge in the
-  ;; chain; :wrap-attrs from ctx merges UNDER own-attrs (edge wins).
-  ;;
-  ;; A vector at any position is a parallel set; adjacent positions
-  ;; produce a full cross-product of edges (sources x targets).
-  ;;
-  ;; Self-loops and duplicate fan members are allowed (matches behavior
-  ;; of (-> a a) and the implicit-from self-loop rule).
+(defmethod walk-form 'with-attrs [form ctx] (walk-with-attrs form ctx))
+
+(defn- walk-chain
+  "Chain with vector fan. Produces a vector of edges.
+
+  Args: leading symbols and vectors form the chain (>= 2 positions).
+  Anything after is the trailer: optional label string + kw/val attrs
+  via split-header. Trailer's label/attrs apply to every edge in the
+  chain; :wrap-attrs from ctx merges UNDER own-attrs (edge wins).
+
+  A vector at any position is a parallel set; adjacent positions
+  produce a full cross-product of edges (sources x targets).
+
+  Self-loops and duplicate fan members are allowed (matches behavior
+  of (-> a a) and the implicit-from self-loop rule)."
   [form ctx]
   (let [args (rest form)
         [chain trailer] (split-with #(or (symbol? %) (vector? %)) args)
@@ -196,3 +206,5 @@
         :bidirectional? false
         :description    desc
         :attrs          attrs}))))
+
+(defmethod walk-form '=> [form ctx] (walk-chain form ctx))
