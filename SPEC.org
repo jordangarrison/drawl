@@ -133,7 +133,7 @@ A directed relationship.
 
 Convenience for two-way relationships. Renders as the backend's bidirectional edge primitive (=Rel_Bi= in mermaid C4, =dir=both= in dot).
 
-*** Edge-surface extensions (v0.3)
+*** Edge-surface extensions
 
 Three additive mechanisms layer onto =(->)= / =(<->)= without changing the IR. See [[file:docs/specs/2026-05-13-edge-syntax-design.md][docs/specs/2026-05-13-edge-syntax-design.md]] for the full design discussion; the user-facing reference lives in [[file:GRAMMAR.org][GRAMMAR.org]] §Relationships.
 
@@ -395,7 +395,7 @@ the head is not in the registry, the walker throws.
 folds in any top-level =(defmacro ...)= forms (last-write wins, with a
 warning).
 
-*Walker contract additions (edge-surface v0.3).* Two ctx keys carry
+*Walker contract additions (edge-surface).* Two ctx keys carry
 edge-surface state through the walk; one structural rule lets a single
 form produce many IR nodes. Full rationale in
 [[file:docs/specs/2026-05-13-edge-syntax-design.md][docs/specs/2026-05-13-edge-syntax-design.md]].

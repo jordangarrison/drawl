@@ -43,6 +43,12 @@
     (throw (ex-info (str "Unknown form head: " (pr-str (first form)))
                     {:type :walk-error :form form}))))
 
+(defn- splice-walked
+  "Flatten walk-form results: a vector return splices its members, a single
+  node passes through. Used by walk-children and with-attrs."
+  [walked]
+  (mapcat (fn [r] (if (vector? r) r [r])) walked))
+
 (defn- walk-children
   "Walk each child form and split the results into [elements edges].
   A child walker may return a single node or a vector of nodes (e.g.
@@ -50,7 +56,7 @@
   head (diagram + person/system/container/component)."
   [children ctx]
   (let [walked    (mapv #(walk-form % ctx) children)
-        flattened (mapcat (fn [r] (if (vector? r) r [r])) walked)
+        flattened (splice-walked walked)
         {elements true edges false}
         (group-by #(not= :edge (:kind %)) flattened)]
     [(vec elements) (vec edges)]))
@@ -143,8 +149,7 @@
                             {:type :walk-error :form form})))
         child-ctx (update ctx :wrap-attrs #(merge % amap))
         walked    (mapv #(walk-form % child-ctx) body)]
-    (vec
-     (mapcat (fn [r] (if (vector? r) r [r])) walked))))
+    (vec (splice-walked walked))))
 
 (defmethod walk-form '=>
   ;; Chain with vector fan. Produces a vector of edges.
