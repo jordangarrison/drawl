@@ -229,3 +229,68 @@
       (is (= {:tech "gRPC"} (:attrs edge-a)))
       (is (= {:tech "REST" :style :dashed} (:attrs edge-b))
           "edge :tech wins, wrap :style passes through"))))
+
+;; --- => chain with vector fan -------------------------------------------
+
+(defn- chain-edges
+  "Convenience: parse a diagram containing only the chain form,
+  return its relationships in order. Containers are wrapped in a system
+  to satisfy validate-nesting (containers must live inside a system)."
+  [chain-src]
+  (-> (c/parse (str "(diagram (system root
+                                (container a) (container b)
+                                (container c) (container d)
+                                (container e) (container f))
+                              " chain-src ")"))
+      :relationships))
+
+(deftest chain-two-nodes
+  (let [edges (chain-edges "(=> a b)")]
+    (is (= 1 (count edges)))
+    (is (= 'a (-> edges first :from)))
+    (is (= 'b (-> edges first :to)))))
+
+(deftest chain-three-nodes-yields-two-edges
+  (let [edges (chain-edges "(=> a b c)")]
+    (is (= 2 (count edges)))
+    (is (= [['a 'b] ['b 'c]]
+           (map (juxt :from :to) edges)))))
+
+(deftest chain-with-label-and-attrs-applies-to-every-edge
+  (let [edges (chain-edges "(=> a b c \"hop\" :tech \"gRPC\")")]
+    (is (= 2 (count edges)))
+    (is (every? #(= "hop" (:description %)) edges))
+    (is (every? #(= "gRPC" (-> % :attrs :tech)) edges))))
+
+(deftest chain-fan-out-from-scalar-to-vector
+  (let [edges (chain-edges "(=> a [b c] d)")]
+    (is (= 4 (count edges)))
+    (is (= #{['a 'b] ['a 'c] ['b 'd] ['c 'd]}
+           (set (map (juxt :from :to) edges))))))
+
+(deftest chain-vector-to-vector-cross-product
+  (let [edges (chain-edges "(=> [a b] [c d])")]
+    (is (= 4 (count edges)))
+    (is (= #{['a 'c] ['a 'd] ['b 'c] ['b 'd]}
+           (set (map (juxt :from :to) edges))))))
+
+(deftest chain-rejects-single-node
+  (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"chain requires at least 2 nodes"
+        (c/parse "(diagram (container a) (=> a))"))))
+
+(deftest chain-rejects-empty-fan-vector
+  (is (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"chain fan vector cannot be empty"
+        (c/parse "(diagram (container a) (container b) (=> a [] b))"))))
+
+(deftest chain-merges-wrap-attrs
+  (testing ":wrap-attrs from ctx flows into every chain edge"
+    (let [edges (walker/walk-form '(=> a b c :tech "REST")
+                                  {:wrap-attrs {:tech "gRPC" :style :dashed}})]
+      (is (vector? edges))
+      (is (= 2 (count edges)))
+      (is (every? #(= "REST"   (-> % :attrs :tech))  edges))
+      (is (every? #(= :dashed  (-> % :attrs :style)) edges)))))
