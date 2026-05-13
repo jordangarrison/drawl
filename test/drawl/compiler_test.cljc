@@ -1,5 +1,6 @@
 (ns drawl.compiler-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.edn :as edn]
             [clojure.string :as str]
             [drawl.compiler :as c])
   #?(:clj (:import (java.io File))))
@@ -28,3 +29,26 @@
            (let [src (slurp f)
                  out (c/compile src :dot)]
              (is (str/starts-with? out "digraph G {"))))))))
+
+#?(:clj
+   (deftest edge-syntax-fixture
+     (testing "implicit-from + => + with-attrs compose end-to-end"
+       (let [src      (slurp "test/fixtures/edges/01-mixed.drawl")
+             expected (clojure.edn/read-string
+                       (slurp "test/fixtures/edges/01-mixed.edn"))
+             actual   (c/parse src)]
+         (is (= (:title expected) (:title actual)))
+         (is (= (:level expected) (:level actual)))
+         (is (= (:relationships expected)
+                (mapv #(select-keys % [:kind :from :to :bidirectional?
+                                       :description :attrs])
+                      (:relationships actual))))
+         (testing "api container has 2 inner edges with :tech gRPC"
+           (let [api (->> actual :elements
+                          (filter #(= 'shop (:id %)))
+                          first :children
+                          (filter #(= 'api (:id %)))
+                          first)]
+             (is (= 2 (count (:edges api))))
+             (is (every? #(= 'api (:from %)) (:edges api)))
+             (is (every? #(= "gRPC" (-> % :attrs :tech)) (:edges api)))))))))

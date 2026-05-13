@@ -1,0 +1,13 @@
+(diagram "Edge syntax fixture"
+  (person customer "Customer")
+  (system shop "Shop"
+    (container web "Web")
+    (container mobile "Mobile")
+    (container api "API"
+      (with-attrs {:tech "gRPC"}
+        (-> auth "verify")
+        (-> catalog "lookup")))
+    (container auth "Auth")
+    (container catalog "Catalog")
+    (container db "DB" :role :database))
+  (=> customer [web mobile] api db "via HTTPS" :tech "HTTPS"))
