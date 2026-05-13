@@ -156,3 +156,79 @@
       (is (str/includes? out "subgraph \"cluster_bank\" {"))
       (is (str/includes? out "\"mainframe\" [shape=\"box\" style=\"rounded\""))
       (is (str/includes? out "\"webapp\" -> \"mainframe\"")))))
+
+;; --- cluster-edge rendering (compound=true + ltail/lhead) ---------------
+;; When an edge endpoint is an element that has children, that element
+;; renders as a graphviz `subgraph cluster_<id>` rather than a node. The
+;; emitter must (a) declare `compound=true` and (b) redirect such edges
+;; to a real interior node + an `ltail`/`lhead` cluster reference, or
+;; graphviz auto-creates a phantom empty node outside the cluster.
+
+(deftest compound-true-declared
+  (let [out (c/compile
+             "(diagram (system bank (container web) (container api)))"
+             :dot)]
+    (is (str/includes? out "compound=true;"))))
+
+(deftest edge-from-cluster-uses-ltail-and-anchor
+  (testing "(-> parent sibling) where parent has children: anchor=first leaf, ltail=cluster_parent"
+    (let [out (c/compile
+               "(diagram
+                  (system s
+                    (container parent
+                      (component child-a)
+                      (component child-b))
+                    (container sibling))
+                  (-> parent sibling \"calls\"))"
+               :dot)]
+      (is (str/includes? out "\"child-a\" -> \"sibling\"")
+          "from anchor is parent's first leaf descendant (child-a)")
+      (is (re-find #"\"child-a\" -> \"sibling\" \[[^\]]*ltail=\"cluster_parent\"" out)
+          "ltail must reference the parent cluster")
+      (is (not (re-find #"\"parent\" -> \"sibling\"" out))
+          "no edge directly from cluster name (would create phantom node)"))))
+
+(deftest edge-to-cluster-uses-lhead-and-anchor
+  (let [out (c/compile
+             "(diagram
+                (system s
+                  (container sibling)
+                  (container parent
+                    (component child)))
+                (-> sibling parent \"calls\"))"
+             :dot)]
+    (is (re-find #"\"sibling\" -> \"child\" \[[^\]]*lhead=\"cluster_parent\"" out))
+    (is (not (re-find #"\"sibling\" -> \"parent\"" out)))))
+
+(deftest edge-between-two-clusters-uses-both
+  (let [out (c/compile
+             "(diagram
+                (system s
+                  (container src
+                    (component src-leaf))
+                  (container dst
+                    (component dst-leaf)))
+                (-> src dst))"
+             :dot)]
+    (is (re-find #"\"src-leaf\" -> \"dst-leaf\" \[[^\]]*ltail=\"cluster_src\"[^\]]*lhead=\"cluster_dst\""
+                 out))))
+
+(deftest leaf-to-leaf-edge-unaffected
+  (testing "regression: edges between leaf elements get no ltail/lhead"
+    (let [out (c/compile
+               "(diagram (person a) (system b) (-> a b))" :dot)]
+      (is (str/includes? out "\"a\" -> \"b\";"))
+      (is (not (re-find #"\"a\" -> \"b\" \[" out))))))
+
+(deftest cluster-anchor-walks-to-deepest-first-leaf
+  (testing "nested clusters: anchor is the first leaf, even through several levels"
+    (let [out (c/compile
+               "(diagram
+                  (system outer
+                    (system inner
+                      (container deepest))
+                    (container sibling))
+                  (-> outer sibling))"
+               :dot)]
+      (is (str/includes? out "\"deepest\" -> \"sibling\"")
+          "anchor is the first leaf at the bottom of outer's first-child chain"))))

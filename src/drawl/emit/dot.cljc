@@ -84,12 +84,41 @@
 (defn- edge-style [attrs]
   (when-let [s (:style attrs)] (name s)))
 
-(defn- edge-line [{:keys [from to bidirectional? attrs] :as e}]
-  (let [pairs (ordered-pairs
+(defn- first-leaf-id
+  "Walk down the first-child chain to the first leaf and return its id.
+  Used as the dot-side anchor when an edge endpoint is itself a cluster
+  (graphviz requires real interior nodes for ltail/lhead edges)."
+  [{:keys [id children]}]
+  (if (seq children)
+    (recur (first children))
+    id))
+
+(defn- index-clusters
+  "Walk the element tree, returning {cluster-id anchor-leaf-id} for every
+  element that has children (renders as a graphviz cluster). The anchor
+  is a real node inside the cluster — required when an edge points at
+  the cluster, since graphviz can't terminate an edge at a subgraph
+  directly."
+  [elements]
+  (letfn [(walk [acc el]
+            (let [acc (if (seq (:children el))
+                        (assoc acc (:id el) (first-leaf-id el))
+                        acc)]
+              (reduce walk acc (:children el))))]
+    (reduce walk {} elements)))
+
+(defn- edge-line [clusters {:keys [from to bidirectional? attrs] :as e}]
+  (let [from-anchor (get clusters from)
+        to-anchor   (get clusters to)
+        from-name   (or from-anchor from)
+        to-name     (or to-anchor   to)
+        pairs (ordered-pairs
                :label (edge-label e)
                :style (edge-style attrs)
-               :dir   (when bidirectional? "both"))]
-    (str "  \"" (esc (name from)) "\" -> \"" (esc (name to)) "\""
+               :dir   (when bidirectional? "both")
+               :ltail (when from-anchor (str "cluster_" (name from)))
+               :lhead (when to-anchor   (str "cluster_" (name to))))]
+    (str "  \"" (esc (name from-name)) "\" -> \"" (esc (name to-name)) "\""
          (when (seq pairs) (str " [" (attr-list pairs) "]"))
          ";")))
 
@@ -112,12 +141,14 @@
 (defn emit
   "IR -> dot string."
   [{:keys [title elements] :as ir}]
-  (str/join
-   "\n"
-   (concat
-    ["digraph G {"
-     (str "  label=\"" (esc (or title "")) "\";")
-     "  rankdir=LR;"]
-    (mapcat element-lines elements)
-    (map edge-line (ir/collect-edges ir))
-    ["}"])))
+  (let [clusters (index-clusters elements)]
+    (str/join
+     "\n"
+     (concat
+      ["digraph G {"
+       (str "  label=\"" (esc (or title "")) "\";")
+       "  rankdir=LR;"
+       "  compound=true;"]
+      (mapcat element-lines elements)
+      (map #(edge-line clusters %) (ir/collect-edges ir))
+      ["}"]))))
