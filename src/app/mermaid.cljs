@@ -5,8 +5,13 @@
 
 (defonce ^:private init!
   (do
+    ;; Default `securityLevel` is `"strict"` — mermaid runs labels and
+    ;; click attributes through DOMPurify. drawl source is user-authored
+    ;; (incl. URL hash share links), so a label like `<img onerror=…>`
+    ;; would otherwise reach the SVG renderer unescaped. We don't use
+    ;; mermaid's `click` directives or HTML labels, so strict costs us
+    ;; nothing here.
     (.initialize mermaid #js {:startOnLoad false
-                              :securityLevel "loose"
                               :theme "default"})
     true))
 

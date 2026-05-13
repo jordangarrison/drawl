@@ -131,7 +131,7 @@ A directed relationship.
 (<-> A B DESCRIPTION? :attrs...)
 #+end_src
 
-Convenience for two-way relationships. Renders as the backend's bidirectional edge primitive (=Rel_Bi= in mermaid C4, =dir=both= in dot).
+Convenience for two-way relationships. Renders as the backend's bidirectional edge primitive (=BiRel= in mermaid C4, =dir=both= in dot).
 
 *** Edge-surface extensions
 
@@ -497,7 +497,7 @@ Top-level header per level: =C4Context=, =C4Container=, =C4Component=.
 | =(container id ... :role :queue)=    | =ContainerQueue(...)=                             |
 | =(component id ...)=                 | =Component(...)=                                  |
 | =(-> a b "desc" :tech "X")=          | =Rel(a, b, "desc", "X")=                          |
-| =(<-> a b ...)=                      | =Rel_Bi(a, b, ...)=                               |
+| =(<-> a b ...)=                      | =BiRel(a, b, ...)=                               |
 
 ** 6.3 Excalidraw
 For hand-drawn-feel diagrams that round-trip through Excalidraw or excalidraw.com --- the user can edit, restyle, or annotate after generation. Output is an Excalidraw scene JSON document; conventional file extension is =.excalidraw=.

@@ -67,12 +67,14 @@
   "C4-PlantUML macro for a leaf element. `:role` flips the suffix on
   Container/Component only; Person/System ignore :role (no _Db/_Queue
   variants exist in C4-PlantUML)."
-  [{:keys [kind attrs]}]
+  [{:keys [id kind attrs]}]
   (let [base (case kind
                :person    "Person"
                :system    "System"
                :container "Container"
-               :component "Component")
+               :component "Component"
+               (throw (ex-info (str "Unknown element kind: " kind)
+                               {:type :emit-error :id id :kind kind})))
         ext? (:external attrs)
         suff (when (#{:container :component} kind)
                (role->suffix (:role attrs)))]
@@ -98,7 +100,9 @@
                 (:person :system)
                 (str ", " (q description) ")")
                 (:container :component)
-                (str ", " (q (:tech attrs)) ", " (q description) ")"))]
+                (str ", " (q (:tech attrs)) ", " (q description) ")")
+                (throw (ex-info (str "Unknown element kind: " kind)
+                                {:type :emit-error :id id :kind kind})))]
     (str head tail)))
 
 (defn- boundary-line

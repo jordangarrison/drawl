@@ -43,18 +43,39 @@
 (defn- show-error! [err-el msg]
   (set! (.-textContent err-el) msg))
 
+;; Both async renderers can resolve out of order under fast typing —
+;; viz.js and mermaid run a layout pass off the main thread, so a
+;; later keystroke can finish before an earlier one. Track the latest
+;; render id; each render captures its id, and `.then` no-ops if a
+;; newer render has started in the meantime. Painting stops being
+;; race-prone without serialising the work itself.
+(defonce ^:private latest-render-id (atom 0))
+
+(defn- begin-render! []
+  (swap! latest-render-id inc))
+
+(defn- stale? [my-id]
+  (not= my-id @latest-render-id))
+
 (defn- render-svg-via-viz! [out-el err-el dot-source]
-  (-> viz-instance
-      (.then (fn [^js v]
-               (.replaceChildren out-el (.renderSVGElement v dot-source))))
-      (.catch (fn [e]
-                (show-error! err-el (str "render: " (or (ex-message e) e)))))))
+  (let [my-id (begin-render!)]
+    (-> viz-instance
+        (.then (fn [^js v]
+                 (when-not (stale? my-id)
+                   (.replaceChildren out-el (.renderSVGElement v dot-source)))))
+        (.catch (fn [e]
+                  (when-not (stale? my-id)
+                    (show-error! err-el (str "render: " (or (ex-message e) e)))))))))
 
 (defn- render-svg-via-mermaid! [out-el err-el mmd-source]
-  (-> (mermaid/render mmd-source)
-      (.then (fn [svg] (.replaceChildren out-el svg)))
-      (.catch (fn [e]
-                (show-error! err-el (str "render: " (or (ex-message e) e)))))))
+  (let [my-id (begin-render!)]
+    (-> (mermaid/render mmd-source)
+        (.then (fn [svg]
+                 (when-not (stale? my-id)
+                   (.replaceChildren out-el svg))))
+        (.catch (fn [e]
+                  (when-not (stale? my-id)
+                    (show-error! err-el (str "render: " (or (ex-message e) e)))))))))
 
 (defn- render! [src backend]
   (let [out-el  (by-id "out")

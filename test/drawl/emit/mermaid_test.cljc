@@ -210,6 +210,23 @@
   (let [out (c/compile "(diagram (person a \"He said \\\"hi\\\"\"))" :mermaid)]
     (is (str/includes? out "Person(a, \"He said \\\"hi\\\"\""))))
 
+;; ── self-loop ──────────────────────────────────────────────────────
+
+(deftest self-loop-top-level
+  (testing "(-> a a) at top level emits a single Rel(a, a, …)"
+    (let [out (c/compile "(diagram (system a) (-> a a \"retries\"))" :mermaid)]
+      (is (str/includes? out "Rel(a, a, \"retries\""))
+      (is (= 1 (count (re-seq #"Rel\(a, a," out)))))))
+
+(deftest self-loop-cluster-uses-first-leaf-anchor-both-ends
+  (testing "(-> parent) inside (container parent (component child)) anchors both ends to first leaf"
+    (let [out (c/compile
+               "(diagram
+                  (system s
+                    (container parent (component child) (-> parent \"retries\"))))"
+               :mermaid)]
+      (is (re-find #"Rel\(child, child, \"retries\"" out)))))
+
 ;; ── error surface ──────────────────────────────────────────────────
 
 (deftest unresolved-endpoint-still-errors-on-mermaid
