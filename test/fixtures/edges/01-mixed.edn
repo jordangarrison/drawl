@@ -1,0 +1,8 @@
+{:title         "Edge syntax fixture"
+ :level         :container
+ :relationships
+ [{:kind :edge :from customer :to web    :bidirectional? false :description "via HTTPS" :attrs {:tech "HTTPS"}}
+  {:kind :edge :from customer :to mobile :bidirectional? false :description "via HTTPS" :attrs {:tech "HTTPS"}}
+  {:kind :edge :from web      :to api    :bidirectional? false :description "via HTTPS" :attrs {:tech "HTTPS"}}
+  {:kind :edge :from mobile   :to api    :bidirectional? false :description "via HTTPS" :attrs {:tech "HTTPS"}}
+  {:kind :edge :from api      :to db     :bidirectional? false :description "via HTTPS" :attrs {:tech "HTTPS"}}]}
