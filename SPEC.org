@@ -143,6 +143,13 @@ Three additive mechanisms layer onto =(->)= / =(<->)= without changing the IR. S
 
 These desugar entirely in the walker; emitters and =drawl.ir/validate= are untouched.
 
+Cluster-edge rendering (=compound=true= + =ltail=/=lhead=) is a
+graphviz/dot concern. The mermaid C4 backend treats element
+containers as =System_Boundary= and routes edges visually without an
+equivalent of =ltail=/=lhead=; the mermaid emitter (planned for v0.2)
+emits plain element-to-element edges and lets mermaid handle
+boundary clipping.
+
 ** 2.4 Attribute Reference
 | Attribute    | Applies to                 | Type    | Notes                                        |
 |--------------+----------------------------+---------+----------------------------------------------|

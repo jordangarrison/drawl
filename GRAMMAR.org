@@ -154,6 +154,12 @@ Chain must have at least two nodes; fan vectors must be non-empty and
 contain only symbols. Per-edge labels are not expressible --- use
 =(-> ...)= for those.
 
+The trailing label/attrs apply uniformly to every edge in the chain
+(including cross-product fan-out). If you need different labels per
+hop, write each as =(-> ...)= directly; mixing per-hop labels into
+=>= would reintroduce position-dependent parsing in a form that
+already does fan + cross-product.
+
 ** =(with-attrs {…} body…)= --- defaults supplier
 
 Wraps any body. Defaults flow into every edge constructed in the
@@ -170,6 +176,17 @@ inner =with-attrs= overrides outer.
 
 First argument must be a map literal; otherwise the form is rejected
 at walk time. Empty body is allowed (no edges produced).
+
+=with-attrs= reaches edges declared inside elements nested in its body
+--- this is intentional. Lexical scope is the contract; if you want
+locality, wrap a smaller subtree.
+
+#+begin_src clojure
+(with-attrs {:tech "gRPC"}
+  (container api "API"
+    (-> auth "verify")        ; gets :tech "gRPC"
+    (-> catalog "lookup")))   ; gets :tech "gRPC"
+#+end_src
 
 * Built-in macros
 
