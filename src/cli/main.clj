@@ -71,32 +71,32 @@
 (defn- tick-once
   "One iteration of the watch loop. Pure-ish: reads the file when its mtime
   has changed, writes the output, returns the next state. Returns a map
-  with :status ∈ #{\"ok\" \"idle\" \"error\"} and :mtime."
+  with :status ∈ #{:ok :idle :error} and :mtime."
   [{:keys [input] :as opts} {:keys [last-mtime]}]
   (let [now (mtime input)]
     (cond
       (nil? now)
       (do (binding [*out* *err*] (println "watch: input missing:" input))
-          {:status "error" :mtime nil})
+          {:status :error :mtime nil})
 
       (= now last-mtime)
-      {:status "idle" :mtime now}
+      {:status :idle :mtime now}
 
       :else
       (let [code (compile-cmd opts)]
-        {:status (if (zero? code) "ok" "error") :mtime now}))))
+        {:status (if (zero? code) :ok :error) :mtime now}))))
 
 (defn watch-cmd [{:keys [input] :as opts}]
-  (when (nil? input)
-    (binding [*out* *err*] (println "watch: --input is required"))
-    (System/exit 2))
-  (binding [*out* *err*] (println (str "watch: " input " (Ctrl-C to stop)")))
-  (loop [state {:last-mtime nil}]
-    (let [next-state (tick-once opts state)]
-      (when (= "ok" (:status next-state))
-        (binding [*out* *err*] (println (str "watch: recompiled @ " (:mtime next-state)))))
-      (Thread/sleep 500)
-      (recur (assoc state :last-mtime (:mtime next-state))))))
+  (if (nil? input)
+    (do (binding [*out* *err*] (println "watch: --input is required"))
+        2)
+    (do (binding [*out* *err*] (println (str "watch: " input " (Ctrl-C to stop)")))
+        (loop [state {:last-mtime nil}]
+          (let [next-state (tick-once opts state)]
+            (when (= :ok (:status next-state))
+              (binding [*out* *err*] (println (str "watch: recompiled @ " (:mtime next-state)))))
+            (Thread/sleep 500)
+            (recur {:last-mtime (or (:mtime next-state) (:last-mtime state))}))))))
 
 (def ^:private usage
   "Usage: drawl <subcommand> [options]
@@ -115,3 +115,9 @@
       "watch"   (watch-cmd   (cli/parse-opts rest-args {:spec cli-spec}))
       (do (binding [*out* *err*] (println usage))
           2))))
+
+(defn ^:export -main-cli
+  "Process entrypoint: dispatches to -main and forwards the integer return
+  to System/exit. Tests call -main directly and don't go through this."
+  [& args]
+  (System/exit (apply -main args)))

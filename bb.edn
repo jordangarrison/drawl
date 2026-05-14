@@ -2,4 +2,4 @@
  :deps  {org.clojure/data.json {:mvn/version "2.4.0"}}
  :tasks {drawl {:doc  "Run the drawl CLI. Example: bb drawl compile -i FILE -b dot"
                 :task (do (require 'cli.main)
-                          (apply (resolve 'cli.main/-main) *command-line-args*))}}}
+                          (apply (resolve 'cli.main/-main-cli) *command-line-args*))}}}

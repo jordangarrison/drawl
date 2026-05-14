@@ -89,7 +89,7 @@
         ;; Initial state: nil mtime, nothing emitted yet.
         state    {:last-mtime nil}
         result   (#'main/tick-once opts state)]
-    (is (= "ok"  (:status result)))
+    (is (= :ok  (:status result)))
     (is (some?   (:mtime  result)))
     (is (str/starts-with? (slurp out-file) "digraph G {")))
   (testing "second call with no mtime change is a no-op"
@@ -99,5 +99,5 @@
           opts     {:input in :output (.getAbsolutePath out-file) :backend "dot"}
           first    (#'main/tick-once opts {:last-mtime nil})
           second   (#'main/tick-once opts {:last-mtime (:mtime first)})]
-      (is (= "idle" (:status second)))
+      (is (= :idle (:status second)))
       (is (= (:mtime first) (:mtime second))))))
