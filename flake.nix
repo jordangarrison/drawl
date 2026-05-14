@@ -15,8 +15,18 @@
           inherit (nixpkgs) lib;
         };
 
+        packages.cli = pkgs.callPackage ./nix/cli.nix {
+          inherit (nixpkgs) lib;
+        };
+
+        apps.cli = {
+          type = "app";
+          program = "${self.packages.${system}.cli}/bin/drawl";
+        };
+
         devShells.default = import ./nix/devshell.nix { inherit pkgs; };
       }) // {
       nixosModules.default = import ./nix/module.nix self;
+      nixosModules.cli = import ./nix/cli-module.nix self;
     };
 }

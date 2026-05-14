@@ -54,6 +54,35 @@ drawl lint -i examples/03-bank-containers.drawl
 drawl watch -i examples/03-bank-containers.drawl -o bank.dot
 #+end_src
 
+** Install via Nix
+
+The flake exposes the CLI as =packages.cli= and a =programs.drawl= NixOS module.
+
+#+begin_src bash
+# One-shot
+nix run github:jordangarrison/drawl#cli -- compile -i examples/01-hello.drawl
+
+# Install into user profile
+nix profile install github:jordangarrison/drawl#cli
+#+end_src
+
+NixOS, system-wide:
+
+#+begin_src nix
+{
+  inputs.drawl.url = "github:jordangarrison/drawl";
+
+  outputs = { self, nixpkgs, drawl, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        drawl.nixosModules.cli
+        { programs.drawl.enable = true; }
+      ];
+    };
+  };
+}
+#+end_src
+
 See [[file:SPEC.org][SPEC.org]] §5.2 for the full CLI contract.
 
 * Example
