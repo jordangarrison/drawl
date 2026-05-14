@@ -80,3 +80,24 @@
         code (binding [*err* err] (main/-main "lint" "-i" in))]
     (is (= 1 code))
     (is (str/includes? (str err) ":walk-error"))))
+
+(deftest tick-once-recompiles-when-mtime-changes
+  (let [in       (tmp-file ".drawl" hello-src)
+        out-file (java.io.File/createTempFile "drawl-cli-tick" ".dot")
+        _        (.deleteOnExit out-file)
+        opts     {:input in :output (.getAbsolutePath out-file) :backend "dot"}
+        ;; Initial state: nil mtime, nothing emitted yet.
+        state    {:last-mtime nil}
+        result   (#'main/tick-once opts state)]
+    (is (= "ok"  (:status result)))
+    (is (some?   (:mtime  result)))
+    (is (str/starts-with? (slurp out-file) "digraph G {")))
+  (testing "second call with no mtime change is a no-op"
+    (let [in       (tmp-file ".drawl" hello-src)
+          out-file (java.io.File/createTempFile "drawl-cli-tick" ".dot")
+          _        (.deleteOnExit out-file)
+          opts     {:input in :output (.getAbsolutePath out-file) :backend "dot"}
+          first    (#'main/tick-once opts {:last-mtime nil})
+          second   (#'main/tick-once opts first)]
+      (is (= "idle" (:status second)))
+      (is (= (:mtime first) (:mtime second))))))

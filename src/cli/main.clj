@@ -64,10 +64,40 @@
       (binding [*out* *err*] (println (str "io-error: " (.getMessage e))))
       1)))
 
-(defn watch-cmd [_opts]
-  ;; Placeholder — wired in Task 6.
-  (binding [*out* *err*] (println "watch: not yet implemented"))
-  2)
+(defn- mtime [^String path]
+  (let [f (io/file path)]
+    (when (.exists f) (.lastModified f))))
+
+(defn- tick-once
+  "One iteration of the watch loop. Pure-ish: reads the file when its mtime
+  has changed, writes the output, returns the next state. Returns a map
+  with :status ∈ #{\"ok\" \"idle\" \"error\"} and :mtime."
+  [{:keys [input output backend] :as opts} {:keys [last-mtime] :as prev-state}]
+  (let [effective-last (or last-mtime (:mtime prev-state))
+        now            (mtime input)]
+    (cond
+      (nil? now)
+      (do (binding [*out* *err*] (println "watch: input missing:" input))
+          {:status "error" :mtime nil})
+
+      (= now effective-last)
+      {:status "idle" :mtime now}
+
+      :else
+      (let [code (compile-cmd opts)]
+        {:status (if (zero? code) "ok" "error") :mtime now}))))
+
+(defn watch-cmd [{:keys [input] :as opts}]
+  (when (nil? input)
+    (binding [*out* *err*] (println "watch: --input is required"))
+    (System/exit 2))
+  (binding [*out* *err*] (println (str "watch: " input " (Ctrl-C to stop)")))
+  (loop [state {:last-mtime nil}]
+    (let [next-state (tick-once opts state)]
+      (when (= "ok" (:status next-state))
+        (binding [*out* *err*] (println (str "watch: recompiled @ " (:mtime next-state)))))
+      (Thread/sleep 500)
+      (recur (assoc state :last-mtime (:mtime next-state))))))
 
 (def ^:private usage
   "Usage: drawl <subcommand> [options]
