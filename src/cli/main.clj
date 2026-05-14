@@ -72,7 +72,7 @@
   "One iteration of the watch loop. Pure-ish: reads the file when its mtime
   has changed, writes the output, returns the next state. Returns a map
   with :status ∈ #{\"ok\" \"idle\" \"error\"} and :mtime."
-  [{:keys [input output backend] :as opts} {:keys [last-mtime] :as prev-state}]
+  [{:keys [input] :as opts} {:keys [last-mtime] :as prev-state}]
   (let [effective-last (or last-mtime (:mtime prev-state))
         now            (mtime input)]
     (cond
