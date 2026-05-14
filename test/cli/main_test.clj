@@ -101,3 +101,9 @@
           second   (#'main/tick-once opts {:last-mtime (:mtime first)})]
       (is (= :idle (:status second)))
       (is (= (:mtime first) (:mtime second))))))
+
+(deftest watch-missing-input-exits-2
+  (let [err  (java.io.StringWriter.)
+        code (binding [*err* err] (main/-main "watch"))]
+    (is (= 2 code))
+    (is (str/includes? (str err) "--input is required"))))

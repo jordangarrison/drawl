@@ -20,7 +20,7 @@
     (doseq [^java.io.File f (example-files)]
       (testing (.getName f)
         (let [{:keys [exit out err]}
-              (sh/sh "bb" "-m" "cli.main" "compile" "-i" (.getAbsolutePath f) "-b" "dot")]
+              (sh/sh "bb" "drawl" "compile" "-i" (.getAbsolutePath f) "-b" "dot")]
           (is (zero? exit) (str "non-zero exit for " (.getName f) ": " err))
           (is (str/starts-with? out "digraph G {")
               (str "unexpected dot output for " (.getName f))))))))
@@ -30,5 +30,5 @@
     (println "skipping bb smoke test: bb not on PATH")
     (doseq [^java.io.File f (example-files)]
       (testing (.getName f)
-        (let [{:keys [exit err]} (sh/sh "bb" "-m" "cli.main" "lint" "-i" (.getAbsolutePath f))]
+        (let [{:keys [exit err]} (sh/sh "bb" "drawl" "lint" "-i" (.getAbsolutePath f))]
           (is (zero? exit) (str "lint failed for " (.getName f) ": " err)))))))
