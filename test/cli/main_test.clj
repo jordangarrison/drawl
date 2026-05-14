@@ -33,3 +33,33 @@
         code    (binding [*err* err] (main/-main "compile" "-i" missing))]
     (is (= 1 code))
     (is (str/includes? (str err) "io-error"))))
+
+(deftest compile-output-file-mermaid
+  (testing "compile with --output and --backend mermaid writes to file"
+    (let [in       (tmp-file ".drawl" hello-src)
+          out-file (java.io.File/createTempFile "drawl-cli-out" ".mmd")
+          _        (.deleteOnExit out-file)
+          out      (java.io.StringWriter.)
+          err      (java.io.StringWriter.)
+          code     (binding [*out* out *err* err]
+                     (main/-main "compile"
+                                 "--input"   in
+                                 "--output"  (.getAbsolutePath out-file)
+                                 "--backend" "mermaid"))]
+      (is (= 0 code))
+      (is (= "" (str out)) "should be silent on stdout when --output is set")
+      (is (re-find #"^C4(Context|Container|Component)" (slurp out-file))))))
+
+(deftest compile-unknown-backend-exits-1
+  (let [in   (tmp-file ".drawl" hello-src)
+        err  (java.io.StringWriter.)
+        code (binding [*err* err] (main/-main "compile" "-i" in "-b" "fred"))]
+    (is (= 1 code))
+    (is (str/includes? (str err) "Unknown backend: fred"))))
+
+(deftest compile-parse-error-exits-1
+  (let [in   (tmp-file ".drawl" "(diagram (system a) (system a))") ; duplicate id
+        err  (java.io.StringWriter.)
+        code (binding [*err* err] (main/-main "compile" "-i" in)) ]
+    (is (= 1 code))
+    (is (str/includes? (str err) "walk-error"))))
