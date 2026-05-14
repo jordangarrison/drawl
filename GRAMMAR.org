@@ -97,7 +97,7 @@ Keyword/value pairs after the positional args, before any children.
 |---------------+-----------+----------------------------------------------------------|
 | =:tech=       | string    | technology tag, rendered in the label                    |
 | =:role=       | keyword   | shape hint (e.g. =:database= → cylinder in dot)          |
-| =:external=   | boolean   | flips suffix to =_Ext= in mermaid C4                     |
+| =:external=   | boolean   | flips suffix to =_Ext= on =person= / =system= in mermaid C4 (no _Ext variant for container / component) |
 | =:style=      | string    | passed through to the backend (dot =style==, etc.)       |
 
 Unknown attrs are accepted by the walker and silently ignored by the
@@ -253,8 +253,17 @@ See SPEC.org §6 for the full mapping. Quick highlights:
 - *graphviz dot* — =:role :database= → =shape=cylinder=. Boundaries
   become =subgraph cluster_N=. =:style= passes through verbatim.
 - *mermaid C4* — header per level (=C4Context= / =C4Container= /
-  =C4Component=). =:external= flips =Foo= → =Foo_Ext=. Systems with
-  children become =System_Boundary=.
+  =C4Component=). =:external= flips =Foo= → =Foo_Ext= on =person= /
+  =system= only (mermaid C4 has no _Ext form for container or
+  component). Systems and containers with children render via
+  =Boundary(id, label, "system" | "container")= so the boundary
+  stereotype matches the kind (the dedicated =System_Boundary= /
+  =Container_Boundary= macros mislabel as =[ENTERPRISE]=).
+  =:role :database= → =*Db= variant; =:role :queue= → =*Queue=. Edges
+  where an endpoint is a boundary are rewritten to the boundary's
+  first leaf descendant in declaration order (mermaid C4 refuses
+  boundary endpoints directly). Edge =:style= and =:role= on
+  Person/System are silently ignored — no native equivalent.
 
 * Errors
 

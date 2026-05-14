@@ -1,6 +1,7 @@
 (ns drawl.compiler-test
   (:require [clojure.test :refer [deftest is testing]]
-            [clojure.edn :as edn]
+            #?(:clj  [clojure.edn :as edn]
+               :cljs [cljs.reader :as edn])
             [clojure.string :as str]
             [drawl.compiler :as c])
   #?(:clj (:import (java.io File))))
@@ -21,14 +22,21 @@
 
 #?(:clj
    (deftest examples-compile
-     (testing "Every fixture in examples/ compiles to dot."
+     (testing "Every fixture in examples/ compiles to dot and mermaid."
        (doseq [^File f (->> (file-seq (File. "examples"))
                             (filter #(str/ends-with? (.getName ^File %) ".drawl"))
                             sort)]
          (testing (.getName f)
-           (let [src (slurp f)
-                 out (c/compile src :dot)]
-             (is (str/starts-with? out "digraph G {"))))))))
+           (let [src      (slurp f)
+                 dot-out  (c/compile src :dot)
+                 mmd-out  (c/compile src :mermaid)
+                 has-edge? (boolean (re-find #"\(-> |\(<-> |\(=> " src))]
+             (is (str/starts-with? dot-out "digraph G {"))
+             (is (re-find #"^C4(Context|Container|Component)" mmd-out))
+             ;; Fixtures with edges should produce at least one Rel(/BiRel(.
+             (when has-edge?
+               (is (re-find #"(?:Rel|BiRel)\(" mmd-out)
+                   "mermaid output is missing edge lines for a fixture with edges"))))))))
 
 (def ^:private edge-syntax-fixture-src
   "(diagram \"Edge syntax fixture\"

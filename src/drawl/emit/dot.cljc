@@ -28,12 +28,14 @@
 
 (defn- shape-for
   "Default shape for a leaf element, before role/external overrides."
-  [{:keys [kind]}]
+  [{:keys [id kind]}]
   (case kind
     :person    {:shape "oval"}
     :system    {:shape "box" :style "rounded"}
     :container {:shape "box" :style "rounded,filled"}
-    :component {:shape "box"}))
+    :component {:shape "box"}
+    (throw (ex-info (str "Unknown element kind: " kind)
+                    {:type :emit-error :id id :kind kind}))))
 
 (defn- with-style
   "Append `extra` to an existing comma-separated dot style attr."
