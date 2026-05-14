@@ -4,7 +4,6 @@
   entrypoint; tests call -main directly and just consume the return value."
   (:require [babashka.cli :as cli]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [drawl.compiler :as drawl]))
 
 (def ^:private backend-aliases
@@ -44,18 +43,26 @@
           out (drawl/compile src (parse-backend backend))]
       (write-output output out)
       0)
-    (catch clojure.lang.ExceptionInfo e (print-error e) 1)))
+    (catch clojure.lang.ExceptionInfo e (print-error e) 1)
+    (catch java.io.IOException e
+      (binding [*out* *err*] (println (str "io-error: " (.getMessage e))))
+      1)))
 
 (defn lint-cmd [{:keys [input]}]
-  (let [src    (read-source input)
-        errors (drawl/validate src)]
-    (if (nil? errors)
-      0
-      (do (doseq [e errors]
-            (binding [*out* *err*]
-              (println (str (:type e) ": " (:message e)
-                            (when-let [p (:position e)] (str " at " p))))))
-          1))))
+  (try
+    (let [src    (read-source input)
+          errors (drawl/validate src)]
+      (if (nil? errors)
+        0
+        (do (doseq [e errors]
+              (binding [*out* *err*]
+                (println (str (:type e) ": " (:message e)
+                              (when-let [p (:position e)] (str " at " p))))))
+            1)))
+    (catch clojure.lang.ExceptionInfo e (print-error e) 1)
+    (catch java.io.IOException e
+      (binding [*out* *err*] (println (str "io-error: " (.getMessage e))))
+      1)))
 
 (defn watch-cmd [_opts]
   ;; Placeholder — wired in Task 6.

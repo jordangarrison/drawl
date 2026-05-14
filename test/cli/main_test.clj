@@ -26,3 +26,10 @@
       (is (str/starts-with? (str out) "digraph G {"))
       (is (str/includes? (str out) "label=\"Hello\""))
       (is (= "" (str err))))))
+
+(deftest compile-missing-input-exits-1
+  (let [missing (str (java.io.File/createTempFile "drawl-cli-missing-" ".drawl") "-does-not-exist")
+        err     (java.io.StringWriter.)
+        code    (binding [*err* err] (main/-main "compile" "-i" missing))]
+    (is (= 1 code))
+    (is (str/includes? (str err) "io-error"))))
