@@ -63,3 +63,20 @@
         code (binding [*err* err] (main/-main "compile" "-i" in)) ]
     (is (= 1 code))
     (is (str/includes? (str err) "walk-error"))))
+
+(deftest lint-good-source-silent
+  (let [in   (tmp-file ".drawl" hello-src)
+        out  (java.io.StringWriter.)
+        err  (java.io.StringWriter.)
+        code (binding [*out* out *err* err] (main/-main "lint" "-i" in))]
+    (is (= 0 code))
+    (is (= "" (str out)))
+    (is (= "" (str err)))))
+
+(deftest lint-bad-source-reports-errors
+  ;; duplicate id triggers a walk-error from drawl.compiler/validate
+  (let [in   (tmp-file ".drawl" "(diagram (system a) (system a))")
+        err  (java.io.StringWriter.)
+        code (binding [*err* err] (main/-main "lint" "-i" in))]
+    (is (= 1 code))
+    (is (str/includes? (str err) ":walk-error"))))
