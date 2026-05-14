@@ -98,6 +98,6 @@
           _        (.deleteOnExit out-file)
           opts     {:input in :output (.getAbsolutePath out-file) :backend "dot"}
           first    (#'main/tick-once opts {:last-mtime nil})
-          second   (#'main/tick-once opts first)]
+          second   (#'main/tick-once opts {:last-mtime (:mtime first)})]
       (is (= "idle" (:status second)))
       (is (= (:mtime first) (:mtime second))))))
