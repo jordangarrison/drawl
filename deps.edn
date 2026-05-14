@@ -4,7 +4,8 @@
         thheller/shadow-cljs       {:mvn/version "2.28.18"}
         applied-science/js-interop {:mvn/version "0.3.3"}
         io.github.nextjournal/clojure-mode
-        {:git/sha "d91608c734147e3e8f80dbb0e61c79007875ae22"}}
+        {:git/sha "d91608c734147e3e8f80dbb0e61c79007875ae22"}
+        org.babashka/cli           {:mvn/version "0.8.61"}}
  :aliases
  {:test
   {:extra-paths ["test"]
