@@ -35,6 +35,56 @@ Run tests against a JVM REPL:
 clojure -M:test:nrepl          # nREPL on a free port; eval (clojure.test/run-all-tests)
 #+end_src
 
+* CLI
+
+#+begin_src bash
+# Install via bbin (planned; until published you can run from a clone with `bb drawl ...`)
+bbin install io.github.jordangarrison/drawl
+
+# Compile a .drawl file to dot (default backend) and print to stdout
+drawl compile -i examples/03-bank-containers.drawl
+
+# Compile to a file with the mermaid C4 backend
+drawl compile -i examples/03-bank-containers.drawl -b mermaid -o bank.mmd
+
+# Validate without emitting
+drawl lint -i examples/03-bank-containers.drawl
+
+# Recompile on change (500 ms poll; Ctrl-C to stop)
+drawl watch -i examples/03-bank-containers.drawl -o bank.dot
+#+end_src
+
+** Install via Nix
+
+The flake exposes the CLI as =packages.cli= and a =programs.drawl= NixOS module.
+
+#+begin_src bash
+# One-shot
+nix run github:jordangarrison/drawl#cli -- compile -i examples/01-hello.drawl
+
+# Install into user profile
+nix profile install github:jordangarrison/drawl#cli
+#+end_src
+
+NixOS, system-wide:
+
+#+begin_src nix
+{
+  inputs.drawl.url = "github:jordangarrison/drawl";
+
+  outputs = { self, nixpkgs, drawl, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      modules = [
+        drawl.nixosModules.cli
+        { programs.drawl.enable = true; }
+      ];
+    };
+  };
+}
+#+end_src
+
+See [[file:SPEC.org][SPEC.org]] §5.2 for the full CLI contract.
+
 * Example
 
 #+begin_src lisp
